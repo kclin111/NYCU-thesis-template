@@ -17,67 +17,243 @@
 \section{Problem Formulation}
 \label{sec:design:formulation}
 
-% ★ 這是第一個要真的動筆的地方 ★
-% 為什麼先寫這節：本章其餘各節與第 4 章都是在描述已經跑得動的東西，寫起來不會失敗，
-% 資訊量低。這一節是唯一會當場失敗的——要形式化 A: T -> S，就必須寫出 T 到底是什麼，
-% 而那份清單正好是 evaluation-protocol-v1.md §3.1 要求、公平性條款也需要的東西。
-% 如果這節寫不下去，代表系統的定義有問題，而那件事要在標註 24 個案例之前知道。
+\subsection{A Stateful, Two-Stage Input Model}
+\label{sec:design:inputs}
+
+The abbreviation $\mathcal{A}:T\rightarrow S$ is potentially misleading because the
+system does not consume all experimental material in one call, and derivation is neither
+pure nor deterministic. Let $d$ denote one derivation dataset in template lineage
+$\ell$. We split the available material into a derivation layer and a later regression
+layer,
+\begin{align}
+T &= \bigl(T_{\mathrm{der},d}^{(n)},T_{\mathrm{reg},\ell}\bigr), \\
+T_{\mathrm{der},d}^{(n)}
+  &= \bigl(d,\ell,B_d,Y_d^{?},\{X_{dj}\}_{j=1}^{N_d},R_d^{?},U_d^{?},
+      Q_d,P,\Gamma,\Theta,H_d^{(<n)}\bigr), \\
+T_{\mathrm{reg},\ell}
+  &= \mathcal{R}_{\ell}
+   = \left\{c_i=\bigl(I_i,\{X_{ij}\}_{j=1}^{N_i},u_i,\pi_i,Y_i^{?}\bigr)
+     \right\}_{i=1}^{K_{\ell}} .
+\end{align}
+Here, $B_d$ is exactly one baseline template; $Y_d^{?}$ is an optional expected
+output; $\{X_{dj}\}_{j=1}^{N_d}$ is a possibly empty collection of source artifacts;
+$R_d^{?}$ is an optional operational-rule artifact; and $U_d^{?}$ is an optional
+inline source-data override. When present, the override bypasses the locally parsed
+artifact dictionary and, on the agent path, takes precedence over extracted keys. $Q_d$
+groups the inspection level, force-refresh choice,
+content-addressed dump, cache state, CAD preflight and health observations, locator
+verification, and deterministic validation/repair feedback. The derivation environment
+is also an input: $P$ denotes the prompt files, $\Gamma$ the agent's tool and skill
+definitions, and $\Theta$ the model, gateway, and MCP configuration. Thus, changing a
+prompt, an allowed tool, or the selected model changes $T_{\mathrm{der}}$ even when all
+customer artifacts are byte-identical.
+
+The term $H_d^{(<n)}$ is the pre-existing state before the $n$th derive. It contains
+the field names and rule inventories accumulated from all existing non-degraded specs
+derived from the same dataset. The implementation reads this state through
+\texttt{derivation\_service.DerivationService.\_reference\_specs},
+\texttt{\_field\_hints}, and \texttt{\_previous\_rule\_inventory}; the degraded flag
+used by that selection is produced by \texttt{cad\_health.degradation}. The hints are
+fed to the agent and the prior inventory is merged into the new spec evidence. With
+$\omega_n$ denoting model sampling and the observed session/tool trace, the honest
+derivation relation is therefore
+\begin{equation}
+S_d^{(n)} \sim
+\mathcal{A}\!\left(T_{\mathrm{der},d}^{(n)};\omega_n\right),
+\qquad
+T_{\mathrm{reg},\ell}\notin\operatorname{dom}(\mathcal{A}).
+\label{eq:stateful-derivation}
+\end{equation}
+Consequently, two derives over the same artifact bytes need not have the same context or
+the same output: $H_d^{(<n)}$ may have changed, and $\omega_n$ is stochastic. In this
+thesis, $\mathcal{A}:T\rightarrow S$ is only shorthand for the projection
+$\mathcal{A}:T_{\mathrm{der}}\rightsquigarrow S$ in
+Equation~\ref{eq:stateful-derivation}, not a claim that $\mathcal{A}$ is a pure function.
+
+This split follows the implemented call boundary. The dataset creation and derive
+paths, \texttt{api.create\_dataset} and
+\texttt{derivation\_service.DerivationService.derive}, admit one baseline, at most one
+expected artifact, $N_d$ source artifacts, and at most one rules artifact. They do not
+read \texttt{models.DwgTestCase}. Only after $S$ exists does the separate endpoint call
+\texttt{regression.RegressionRunner.run}, which selects every active test case of the
+spec's lineage and executes them. $K_{\ell}$ is therefore the number of active cases at
+regression time; the implementation imposes no $K_{\ell}=3$ limit. Each case $c_i$
+contains an input template $I_i$, its own source artifacts and explicit source-data
+override $u_i$, runtime parameters $\pi_i$, and an optional expected output $Y_i^{?}$.
+
+The prompt, tools, and model terms above are concrete inputs rather than abstract
+nuisance variables. \texttt{derivation\_agent.OpenCodeAgent.derive\_rules} selects the
+\texttt{dwg-derivation} agent and \texttt{OpenCodeAgent.\_run} submits the task payload;
+the selected agent is configured by \texttt{opencode.jsonc}, its prompt is
+\texttt{prompts/derivation.md}, and its permitted CAD MCP tools are defined by the agent
+configuration and \texttt{mcp\_server.server}. These files and settings must therefore
+be versioned with the material definition used in an experiment.
+
+We reason about the resulting specification as
+\begin{equation}
+S=\bigl(G,L_s,L_t,F,\Pi,\mathcal{E}_S\bigr),
+\end{equation}
+where $G$ contains value-source and transformation semantics, $L_s$ contains source
+locators, $L_t$ contains independently derived target locators, $F$ contains rendering
+rules, $\Pi$ is the runtime-parameter schema, and $\mathcal{E}_S$ is derivation and
+validation evidence. The persisted \texttt{DwgSpec} stores these concerns across
+\texttt{field\_map}, rule projections, \texttt{runtime\_params}, and
+\texttt{evidence}; this tuple is a conceptual separation rather than a claim that each
+component is a distinct database column.
+
+\paragraph{Information boundary.}
+The operational-rule artifact $R_d$ may identify source fields and state formulas,
+conditions, constants, and formatting requirements, but it must not contain target cell
+addresses, bookmark names, content-control tags, or mappings of the form
+\texttt{source\_field $\rightarrow$ target\_cell}. Target references belong to $L_t$ and
+must be derived from the template by $\mathcal{A}$; otherwise $R_d$ becomes an answer
+table and the derivation problem is leaked into its input. \textbf{Status:
+normative/aspirational only.} Neither \texttt{api.create\_dataset} nor
+\texttt{derivation\_service.DerivationService.\_load\_rules} rejects an answer-bearing
+rules artifact, and the persisted projection is not structurally safe either:
+\texttt{derivation\_service.DerivationService.derive} currently copies \texttt{handles} into
+\texttt{DwgSpec.mapping\_rules}. If that projection is exported, presented as the rule
+table, or fed back as $R_d$, it exposes target answers. It must therefore remain internal
+and be stripped of target references or split from semantic rules before it can satisfy
+this boundary.
 
 \subsection{Compile-Once, Execute-Many}
 \label{sec:design:compile-once}
 
-% TODO 兩個函數：
-%      derivation  A: T -> S     （一次，昂貴，隨機）
-%      execution   E: (S, V) -> D （多次，便宜，確定性）
-%
-% TODO 正確性條件：對案例集 {(V_i, D_i*)}，E(S, V_i) 通過 oracle O。
-%
-% TODO 這裡要老實處理一件事：A 是隨機的，所以 S 本身是一個隨機變數。
-%      「執行期變異度為零」不等於「整個方法沒有變異度」，只是把它移到 A 這一側。
-%      第 5 章會量它（同一模板獨立 derive D=3 次）。在這裡就先把話說清楚，
-%      不要等到 Results 才承認。
+The target problem class consists of recurrent template-instantiation tasks for which
+the output is deterministically derivable from structured source data and explicit
+operational rules. ``Compile once'' means that the expensive, stochastic derivation in
+Equation~\ref{eq:stateful-derivation} produces one reusable $S$; it does not mean that a
+single fixed output job is reused, because instance values differ. For instance input
+$V_i=(I_i,\{X_{ij}\},u_i,\pi_i)$, execution deterministically instantiates and applies
+the spec,
+\begin{align}
+(J_i,P_i) &= \mathcal{C}(S,V_i), \\
+D_i &= \mathcal{X}(J_i,I_i), \\
+\operatorname{ok}_i
+  &= \mathcal{O}_{\mathrm{plan}}(P_i,I_i,D_i)
+     \land
+     \begin{cases}
+       \mathcal{O}_{\mathrm{expected}}(D_i,Y_i), & Y_i^{?}=Y_i,\\
+       \mathrm{true}, & Y_i^{?}\text{ is absent}.
+     \end{cases}
+\end{align}
+$\mathcal{C}$ is the deterministic per-instance compiler, $P_i$ is its authoritative
+write plan, $\mathcal{X}$ is the format-specific executor, and $D_i$ is the produced
+document. The problem is to derive an $S$ once such that $\operatorname{ok}_i$ holds
+for every admissible instance, while the cost of derivation is amortized over repeated
+executions.
 
-\subsection{What the Derivation Consumes}
-\label{sec:design:inputs}
+The deterministic core is implementation-backed. In
+\texttt{compiler.compile\_cad\_job}, the spec, source data, runtime parameters, and
+current template values are explicit inputs; failures are returned before submission,
+and the canonical job JSON is content-hashed. The DOCX/XLSX path shares this compiler
+and applies $P_i$ through \texttt{docx\_target.DocxTargetAdapter.apply} or
+\texttt{xlsx\_target.XlsxTargetAdapter.apply};
+\texttt{document\_production.document\_job} records a
+canonical hash for the document job. Regression is also implementation-backed:
+\texttt{regression.RegressionRunner.\_run\_case} compiles each case, and
+\texttt{regression.RegressionRunner.\_verify\_case} uses
+\texttt{verification.verify\_output} plus
+\texttt{verification.compare\_expected} when $Y_i$ exists.
 
-% TODO ★ 本小節是整條線的解鎖點 ★
-%      逐檔列出 T 的內容。目前確定的部分：
-%        - 模板檔（docx / xlsx / dwg）
-%        - 規則文件（已與指導教授定案為 xlsx，一條規則一列，原始規則由我方轉譯）
-%        - K 個校準實例的來源資料
-%        - K 個校準實例的期望輸出
-%        - 結構化 dump 工具的輸出
-%      待查證：上面每一項是否真的進到 agent 的 context？還有沒有漏的？
-%
-% TODO 【紅線，寫進本小節】規則表不得變成答案表：
-%      不可出現目標儲存格位址、bookmark、content control tag，
-%      也不可寫成 source_field -> target_cell。界線在目標端，不在來源端。
-%      這條約束決定了 T 的資訊量上限，所以屬於形式化的一部分而非實作細節。
-%
-% TODO 這份清單定稿後，第 5 章的公平性條款直接引用它：baseline 拿到逐字相同的清單。
+This formulation deliberately localizes randomness to $\mathcal{A}$, but the current
+end-to-end DWG production path does not yet justify a zero-LLM execution claim.
+\texttt{production.ProductionController.start\_run} invokes
+\texttt{derivation\_agent.OpenCodeAgent.repair\_cad\_job} after a failed gateway job
+validation, and
+\texttt{production.\_agent\_job\_preserves\_inputs} excludes target locations from its
+business-value comparison. A repaired target can therefore be accepted and submitted
+within the same run. Eliminating that branch from execution, or changing it to create a
+reviewable draft and fail the run, is required before $\mathcal{X}$ can be described as
+strictly zero-LLM and deterministic.
 
 \subsection{Required Properties of the Specification IR}
 \label{sec:design:properties}
 
-% TODO 把工程決策提升為設計原則，五條：
-%      P1 結構層與值層分離（同一份 spec 服務所有實例）
-%      P2 locator 可解釋且可驗證（能指出「我認為這個欄位在這裡」並被 oracle 檢查）
-%      P3 對佈局變動有韌性，但變動超過容忍範圍時必須失敗而非猜測
-%      P4 可差分（diffable）與可版本化，支援回歸與 lineage
-%      P5 覆蓋率可量測：規格宣稱涵蓋哪些欄位，必須可被稽核
-%
-% TODO P5 現在的實作沒有滿足這條——分母由被評分的 agent 自陳（見 §4.6）。
-%      要嘛先把 rule_segmenter 做出來，要嘛在這裡誠實標明 P5 是規範性要求而非既有性質。
+The reusable IR must satisfy the following five properties. Each status below refers
+to the repository state examined for this thesis, not merely to the intended design.
+
+\paragraph{P1---separation of structure and instance values.}
+$S$ must describe reusable source/target locators, transformations, formatting, and
+parameter types; a particular instance supplies values through $V_i$. The only values
+permitted in $S$ are constants explicitly prescribed by $R_d$, not values copied from a
+calibration output. \textbf{Status: implementation-backed at the representation
+interface.} \texttt{compiler.compile\_cad\_job} accepts \texttt{spec},
+\texttt{source\_data}, and \texttt{runtime\_params} separately, while
+\texttt{value\_layer.resolve\_field\_raw} evaluates the value layer at execution time;
+\texttt{regression.RegressionRunner.\_run\_case} reuses the same spec with each case's
+inputs.
+This interface supports reuse, although successful regression---not the type shape
+alone---is what detects a semantically overfit constant.
+
+\paragraph{P2---explainable and verifiable locators.}
+Every source or target locator must expose what it resolved to and must be checkable
+against the corresponding artifact; an unresolved or ambiguous locator is evidence, not
+permission to guess. \textbf{Status: implementation-backed.}
+\texttt{source\_locator.resolve\_locator} returns the resolved sheet, cell, selection,
+and match count, and \texttt{source\_resolution.verify\_against\_sample} checks that the
+locator reproduces the derivation sample. On the target side,
+\texttt{target\_ref.BaseTargetAdapter.verify} and \texttt{describe} provide a common
+existence and explanation interface.
+\texttt{docx\_target.DocxTargetAdapter.inspect} and
+\texttt{xlsx\_target.XlsxTargetAdapter.inspect} retain labels, physical locations,
+positional flags, and ambiguous references, while their \texttt{apply} methods return
+every missed reference.
+
+\paragraph{P3---bounded layout resilience and fail-loud behavior.}
+Semantic identities should survive admissible layout changes, while a change outside
+the declared tolerance must stop the run rather than trigger a guessed write. This
+includes the zero-LLM execution requirement: an execution-time model must not relocate a
+target. \textbf{Status: normative/aspirational only.} There is substantial partial
+support: source locators resolve by sheet/header/section semantics;
+\texttt{docx\_target.DocxTargetAdapter} distinguishes stable
+content-control/bookmark identities from positional table cells;
+\texttt{xlsx\_target.XlsxTargetAdapter} distinguishes stable defined names from
+positional coordinates; and both reject duplicate or missing references. However, the
+DWG agent-repair branch in
+\texttt{production.ProductionController.start\_run} described above can alter target
+locations and continue the same execution. Therefore the end-to-end fail-loud property
+is not presently enforced.
+
+\paragraph{P4---diffability, versioning, and lineage.}
+The IR and its evidence must support reviewable changes, immutable publication, and
+regression over a template lineage. \textbf{Status: implementation-backed for the
+currently produced handle-backed field-map shape.}
+\texttt{models.DwgSpec} carries a lineage-scoped unique version and template fingerprint;
+\texttt{drift.spec\_field\_drift} reports added, removed, and attribute-level field
+changes; \texttt{models.DwgProductionVersion.save} prevents mutation of the published
+spec/hash identity; and \texttt{regression.RegressionRunner.run} persists results for
+all active cases of the lineage. The drift function reads \texttt{target.handles} rather
+than the generic \texttt{targets} representation; diffability for a future spec that
+uses only generic target refs remains normative until that path is implemented.
+
+\paragraph{P5---independently auditable rule coverage.}
+$S$ must enumerate which rules and fields it claims to cover, and the denominator must
+come from the rule artifact independently of the model being scored. \textbf{Status:
+normative/aspirational only.} The repository implements bookkeeping in
+\texttt{rule\_coverage.merge\_inventory} and \texttt{score\_coverage}, and persists the
+result from \texttt{derivation\_service.DerivationService.derive}. Nevertheless, the current
+\texttt{rule\_inventory} is generated by the same agent that produces $S$ and is unioned
+with inventories from its prior derives. A rule the agent never enumerates is absent
+from the denominator. The existing number is therefore observable but not an
+independent audit of coverage, so it does not satisfy P5.
 
 \subsection{Design Principle: Fail Loud, Not Silent}
 \label{sec:design:failloud}
-
+% TODO ★ 尚未動筆 ★ 這一小節在 2026-08-15 撰寫 §3.1 時被整段刪除，同日復原為寫作規格。
+%      刪除它不是決定，是疏漏——本節是全篇的核心設計信條，不可省略。
 % TODO 明確寫成本論文的核心設計信條，並回指第 2 章的失敗模式分類。
+%      要點：一個有理有據但錯的輸出，比一個明白失敗的輸出更危險，因為它會被交付出去。
+%      §3.1.1 的 information boundary 與 §3.1.3 的 P3、P5 都是這條信條的實例，
+%      寫的時候要把它們收攏成同一個原則，不要各講各的。
 
 \subsection{Scope and Applicability Conditions}
 \label{sec:design:scope}
-
 % TODO ★ 收窄後的命題寫在這裡，Introduction 只放結論句 ★
+%      2026-08-15 註：命題本身已寫進 §3.1.2（Compile-Once, Execute-Many）的正文，
+%      但那裡是順著 compile-once 的論證帶出來的，沒有獨立成「適用條件」的判準清單，
+%      也沒有往第 6 章的前向引用。本小節仍要寫，並與 §3.1.2 交叉引用而非重複。
 %      適用條件（三條都要成立）：
 %        1. recurrent —— 同一份模板會被實例化多次（否則過不了 break-even）
 %        2. deterministically derivable —— 輸出可由結構化來源資料確定性推導
