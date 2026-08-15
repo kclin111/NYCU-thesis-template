@@ -1,3 +1,4 @@
+% !TEX root = ../main.tex
 % 書名頁起至最後一頁皆須加入浮水印
 \AddToShipoutPicture{
     \put(-5,-15){
@@ -18,9 +19,11 @@
 % 如果論文標題太長的話, 可以修改下面的標題字型大小
 % 預設是LARGE, 可以換成其他比較小的語法
 % 大小依序為: LARGE > Large > large > normalsize
-    \begin{minipage}[t][3cm][t]{\textwidth}
-        \centering \LARGE \chineseTitle \\
-        \centering \LARGE \englishTitle \\
+% 本論文標題較長, 已把字級由 \LARGE 降為 \Large 並把 minipage 高度由 3cm 加到 5cm,
+% 否則標題會溢出並壓到下方的研究生/指導教授欄位。若之後題目改短, 可以改回 \LARGE + 3cm。
+    \begin{minipage}[t][5cm][t]{\textwidth}
+        \centering \Large \chineseTitle \\
+        \centering \Large \englishTitle \\
     \end{minipage}
   
     \fontsize{14}{14}\selectfont{

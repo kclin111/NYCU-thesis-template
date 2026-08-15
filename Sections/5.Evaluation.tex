@@ -1,32 +1,171 @@
+% !TEX root = ../main.tex
 \chapter{Performance Evaluation}
 \label{ch:evaluation}
 
-In this section, 整理效能評估.
+% =====================================================================
+% ★ 內容權威來源：docs/thesis/evaluation-protocol-v1.md ★
+% 那份文件是完整的協定，本章是它的正文化。改動請先改那份，再同步過來。
+% 舊的 thesis-outline.md §7.2–7.4 已作廢，不要回頭參照。
+% =====================================================================
 
-下面是subfigure的範例 (其實我個人不常用這個語法, 我都直接在繪圖工具上把圖片整合在一起 XD)
+\section{Research Questions}
+\label{sec:eval:rq}
 
-\begin{figure}
-     \centering
-     \begin{subfigure}[]{0.3\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{img/fig1.png}
-         \caption{figure 1}
-         \label{fig:11111}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[]{0.3\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{img/fig2.png}
-         \caption{figure 2}
-         \label{fig:22222}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[]{0.3\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{img/fig3.png}
-         \caption{figure 3}
-         \label{fig:33333}
-     \end{subfigure}
-        \caption{Three simple graphs}
-        \label{fig:three graphs}
-\end{figure}
+% TODO RQ1 正確性是否不輸逐實例 agent？
+%      RQ2 一致性如何？（注意：本方法的變異度在推導期，不在執行期）
+%      RQ3 成本結構如何？break-even N 在哪裡？
+%      RQ4 模板漂移下的行為差異？
+%      RQ5 各元件的貢獻？（消融）
+%      【舊 RQ7「是否可泛化到非 CAD 模板」已刪除】docx/xlsx 現在是主評測載體不是 PoC。
+
+\section{Study Design}
+\label{sec:eval:design}
+
+\subsection{Why Not a Few-Shot Held-Out Split}
+\label{sec:eval:whynotfewshot}
+
+% TODO ★ 這一小節要主動寫，因為審稿人一定會問為什麼不用標準的 held-out 切法 ★
+%      few-shot / held-out 借的是 in-context learning 的範式：模型看過 K 個 examples
+%      然後泛化到 unseen tasks。本方法不是這個形狀。
+%      模板是輸入不是泛化對象——系統看得到模板不叫洩漏，叫前提，
+%      而 baseline 每次執行也看得到同一份模板，兩邊對稱。
+%      若 held-out 與 demonstration 共用模板則名不副實；
+%      若來自不同模板則本方法必須重跑 derive，那些 examples 對它毫無作用。
+%      真正需要防的是「拿資料調 prompt 而 baseline 沒被調過」，
+%      對應的工具是模板層級的 dev/eval 分離。
+
+\subsection{Two-Level Split}
+\label{sec:eval:split}
+
+% TODO 模板層：開發模板（S1/S2，調 prompt/gates/IR，永不進主結果表）
+%                vs 評測模板（S3/S4/S5）
+%      實例層：每份評測模板內部 K=3 校準實例（三個 arm 共用）+ M=5 評測實例（誰都不得看）
+%      DWG 不進主結果表——整套系統就是在它身上長出來的，構造上已被污染，
+%      獨立報告為案例研究（§5.9）。
+%
+% TODO 【權衡在 §5.10 展開】開發模板刻意選了兩份較弱的，
+%      好處是 prompt 較不會過擬合到評測模板的難點，壞處是除錯價值較低。
+
+\subsection{Dataset Construction}
+\label{sec:eval:dataset}
+
+% TODO 每個案例由人工撰寫的 generator 產生三樣：input.* / expected.* / ground\_truth.json
+%      期望值必須從規則文件算出來，不得由受測系統產生——否則比對是循環論證。
+% TODO 案例之間明細列數必須不同（3/7/15/40），且至少一個案例帶污染列。
+%      否則外延規則根本沒被測到，一份寫死 D5:D19 的規格會全過。（ADR 0002 §4.1）
+
+\section{Baselines and Fairness}
+\label{sec:eval:baselines}
+
+% TODO Arm A：Direct few-shot per-instance（不建立任何持久產物）
+%      Arm B：Agent-built frozen skill（agent 自行歸納 skill，凍結後重用）
+%      Arm C：Ours（compile-once）
+%
+% TODO 三個 arm 一起才回答得了關鍵反駁：
+%      效能差距究竟只是因為「給了範例」，還是本方法的推導真的比 agent 自行歸納 skill 更有效？
+%
+% TODO 公平性條款要寫兩層：
+%      (a) 工具對等：同一套結構化傾印工具、同一個模型、同樣重試上限、同樣 wall-clock 上限
+%      (b) 素材對等：A/B 拿到與 C 的 derive 逐字相同的輸入清單（見 §3.1.2）
+%      舊 deck §7.2 只寫了 (a)。
+%
+% TODO Arm B 的凍結必須靠檔案系統（雜湊 + 唯讀掛載），不能靠 prompt。
+%      評測期間若 agent 嘗試寫入 skill 檔，記為協定違反並列入報告。
+
+\section{Metrics}
+\label{sec:eval:metrics}
+
+% TODO 正確性：semantic 欄位級正確率（主指標）、案例級全對率（含 negative obligation）、
+%              沉默失敗率、範圍外延正確率（診斷用）
+%      presentation 分開報，不混算。不同載體不可以合併成單一正確率。
+% TODO 可靠性：A/B 的 run-to-run 一致率與全 R 次皆正確的案例比例；
+%              C 的執行期恆等（雜湊實證）+ 推導期變異度
+% TODO 成本：derive 的 token/金額/wall-clock（一次性）、每實例成本、break-even N
+% TODO 覆蓋率：以確定性切段後的規則文件為分母（現況見 §4.6）
+
+\subsection{Asymmetric Rerun Budget}
+\label{sec:eval:reruns}
+
+% TODO ★ 要主動辯護這個設計 ★
+%      A/B 各 R=5；C 主表 R=1 + 指定子集 R=5 以輸出雜湊實證恆等。
+%      理由：C 的執行期是零 LLM 確定性的，跑五次必然逐位元相同，那不是實驗是複製檔案。
+%
+% TODO ★ 但 C 的變異度沒有消失，只是換了位置：它在推導期 ★
+%      量法：同一模板獨立 derive D=3 次 -> 3 份規格 -> 每份跑全部評測實例，
+%      報告三份規格之間的正確率／覆蓋率分佈與 spec diff 規模。
+%      把 C 報成「變異度 0」而不交代這件事，會被審稿人一句話擊破。
+
+\section{The Evaluator}
+\label{sec:eval:evaluator}
+
+% TODO 確定性：parse -> 抽值 -> 比對 ground\_truth.json -> pass/fail + 細粒度分數。
+%      不得詢問另一個 LLM「你覺得這份 Excel 對不對」（理由見 §4.3 oracle vs judge）。
+%
+% TODO 兩道自我驗證，缺一不可：
+%      正向——對 generator 自己產的 expected.* 跑必須 100% 通過
+%      反向——突變測試：對 expected.* 施加受控破壞（改一個數值、刪一列、
+%             把該空的格填上東西、改單位），評測器必須全部抓到
+%      沒有反向那道，一個永遠回答 pass 的壞評測器會讓所有 arm 都拿 100%。
+%
+% TODO 這一節換來的是對「你的 correctness 怎麼判斷」的一句話回答：
+%      Ground truth and expected artifacts are generated programmatically, and all methods
+%      are evaluated using the same deterministic evaluator, which is itself validated by
+%      mutation testing.
+
+\section{Template Drift}
+\label{sec:eval:drift}
+
+% TODO 漂移是獨立的一條軸，dev/eval 切分全是同模板，吃不掉它。
+%      一個變體只動一個變因（挪動／改欄位名／換 block／增列擇一），否則失敗時分不出成因。
+%      觀察：A/B 是否沉默地產生錯檔；C 是否在 gate 明確失敗、是否指出漂移位置、
+%      重新推導需要多少成本。這是 fail-loud 設計原則的直接證據。
+
+\section{Ablations}
+\label{sec:eval:ablation}
+
+% TODO 拿掉 structural gates／只留單一 oracle（證明 §4.3 的互補性）／拿掉 repair loop／
+%      換模型（至少兩個，證明結論不綁單一供應商）。
+
+\section{Results}
+\label{sec:eval:results}
+
+% TODO 實驗尚未執行。呈現形式先定：
+%      Table 主結果（三 arm x 全部指標）
+%      Table 消融
+%      Fig. break-even 曲線（三條線）
+%      Fig. 漂移情境對照
+%      失敗案例定性分析——每一類失敗各給一個具體例子，這部分最能說服領域讀者
+
+\subsection{Where the Randomness Went}
+\label{sec:eval:randomness}
+
+% TODO 誠實的一小節，緊接在可靠性數字之後：
+%      本方法沒有消除隨機性，只是把它從 O(N) 次移到 1 次，
+%      並且在那 1 次上加了 gate 與 oracle。
+%      這個交換為什麼值得——以及在什麼條件下不值得（N 太小、derive 成功率太低）。
+%      後者的展開在 §6.2。
+
+\section{Case Study: Engineering Drawings}
+\label{sec:eval:dwg}
+
+% TODO DWG 獨立報告，不併入主結果表。
+%      價值在於證明方法在表徵最不友善、且交付物有法規與生產責任的載體上一樣成立。
+%      現有規模：1 份基準模板、1 份規則文件、5 個回歸案例、4 個標準答案圖、0 個漂移變體。
+
+\section{Threats to Validity}
+\label{sec:eval:threats}
+
+% 原則：主動寫出來反而加分。以下每一條都已經有具體事實可以填，
+% 不要寫成空泛的免責聲明。
+%
+% TODO 資料集規模有限（3 份評測模板，低於 deck 原本的「docx/xlsx 各 3–5 份」）
+%      —— 這是要跟教授明講的縮編，論文裡也要寫，並劃清泛化主張的邊界。
+% TODO 開發模板刻意選了兩份較弱的（S1 純 1->1、S2 一模板多實例最弱），
+%      好處是不易過擬合，壞處是除錯價值較低。
+% TODO Baseline 公平性：A/B 的實作、預算、以及素材清單要完整交代。
+% TODO 模型依賴：由 §5.7 的消融回應（至少兩個模型）。
+% TODO 參考輸出的正確性：誰標的、怎麼驗的、evaluator 的突變測試涵蓋哪些破壞類型。
+% TODO 覆蓋率計分的偏誤方向：若 rule\_segmenter 未完成，分母仍由被評分的 agent 自陳，
+%      而「少枚舉一條規則分數就變高」是系統性偏向本方法的偏誤，必須明說。
+% TODO 載體限制：openpyxl / python-docx 的往返損失（儲存格註解、列印設定），
+%      屬於載體而非方法的限制，但會影響「輸出正確」的判定範圍。

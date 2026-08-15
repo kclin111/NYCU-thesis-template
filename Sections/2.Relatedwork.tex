@@ -1,7 +1,93 @@
+% !TEX root = ../main.tex
 \chapter{Related Work}
 \label{ch:relatedwork}
-通常第二段就是寫相關的參考文獻, 只有cite到的文章才會出現編號並且出現在最後面. 舉例來說, 如果在ref.bib裡放了10篇論文, 可是內文只有cite其中五篇, 編譯出來的結果就只會顯示這五篇. Ref有很多種風格寫法, 本篇論文是採用bibliographystyle\{IEEEtran\}, 
-overleaf上有其他style語法, 可以參考: \\
-https://www.overleaf.com/learn/latex/Bibtex\_bibliography\_styles
 
-This is related work. The PID issue has been widely studied in the field of computer vision and IoT by using various devices. In the field of computer vision, camera is the most popular device. Face recognition technologies are surveyed in \cite{zhao2003face}. Reference \cite{parkhi2015deep} focuses on how to collect a very large training dataset and build a very deep CNN model for face recognition, but training process is extremely computationally expensive. A hybrid RFID and computer vision system for localization and tracking of RFID tags is proposed in \cite{goller2014fusing}. Reference \cite{isasi2010location} presents a solution which combines RFID with object tracking through cameras. Reference \cite{germa2010vision} presents a fusion system consisting of an RFID reader and a camera crew on a mobile robot platform to track people. These works \cite{goller2014fusing},\cite{isasi2010location},\cite{germa2010vision} fuse data from camera and RFID, but their accuracy highly depends on the density of RFID antennas. Thus, they are not suitable for longer range PID. Reference \cite{munaro2014fast} proposes a fast multi-people tracking algorithm for service robots through RGB-D camera. In \cite{spinello2011people}, people detection is realized by dense depth data, called Histogram of Oriented Depths (HOD). 
+% =====================================================================
+% 骨架來源：docs/thesis/thesis-outline.md §2（background）+ §11（related work）
+% 兩者合併成樣板原本的第 2 章。前四節是背景與問題刻畫，後七節是文獻。
+%
+% 相依：docs/thesis/related-work-v1-thought.md（已離線審完）
+%
+% 【使用該產出前必讀】它的「已驗證」實際只等於「連結打得開」：
+%   - 至少 12 篇有同儕審查場所的論文被標成 arXiv preprint（場所欄要用 DBLP 重掃）
+%   - 六篇 2026 的論文無法離線核對，其中 arXiv 2607.08010（Amazon tool-making）
+%     一篇獨力推翻桶 1 的 gap，核對完成前不得據此改任何內容
+%   - 桶 3（LLM + PBE）時間軸停在 2023，2024–2026 全空白，這是唯一非補不可的洞
+% =====================================================================
+
+\section{Template-Shaped Tasks}
+\label{sec:rel:tasks}
+
+% TODO 任務定義：給定模板 T 與一組值 V，產生實例 D = f(T, V)。
+%      難點在 f 的定位（locator）部分：哪一個儲存格／bookmark／文字對應哪一個語意欄位。
+
+\section{Document Formats and Representation Mismatch}
+\label{sec:rel:formats}
+
+% TODO docx / xlsx 的資料模型：bookmark、content control、具名範圍、合併儲存格、
+%      公式 vs 快取值。以及 DWG 的 entity graph、layer、block/attribute、xdata。
+% TODO 表徵不匹配：語意存在於佈局關係，序列化成 token 會摧毀這些結構。
+%      【降階處理】這是動機的一部分但不能當主論點，會被一句「下一代模型就解決了」擊破。
+%      正確的推論是：用工具提供結構化 dump，並且只在編譯期讀一次。
+
+\section{Failure Modes}
+\label{sec:rel:failures}
+
+% TODO 本節是後面 oracle 與 gate 設計的依據，第 3/4 章要有一張對照表回指這裡：
+%      - 沉默失敗（值錯、位置對）
+%      - 定位漂移（模板改版後 locator 指到別的地方）
+%      - 覆蓋不足（欄位根本沒被規格涵蓋 -> 保持模板預設值，最難察覺）
+%      - 格式／單位錯誤
+%      - negative obligation 違反（該空的沒清空）—— 新增，來自 benchmark S5
+%      - 範圍外延錯誤（聚合多算或少算一列，數字有理有據但錯）—— 新增，來自 ADR 0002
+
+\section{Governance Requirements}
+\label{sec:rel:governance}
+
+% TODO 可重現、可稽核、可簽核、可回溯。這是純 agent 方案的結構性障礙。
+% 【措辭修正】不要寫「法規普遍要求 deterministic output」——找不到學術來源。
+%      改寫成 traceability / reproducibility / change control。
+
+\section{LLMs for Document and Engineering-Drawing Understanding}
+\label{sec:rel:understanding}
+
+\section{Document Automation, RPA, and Template Filling}
+\label{sec:rel:rpa}
+
+% TODO 三分法在這裡展開，但結論句已經在 Introduction 出現過：
+%      RPA = deterministic but manual / agents = automatic but stochastic /
+%      ours = automatic derivation + deterministic execution
+
+\section{Programming by Example and Program Synthesis}
+\label{sec:rel:pbe}
+
+% TODO 【這一節是第二危險的鄰居，也是產出裡唯一非補不可的洞：2024–2026 全空白】
+%      FlashFill++ 一類的工作是最直接的比較對象。
+%      區別點：範圍聚合（S3）與 negative obligation（S5）是兩個無法化約成單欄 PBE 的案例。
+
+\section{Tool-Making, Skill Libraries, and Amortized LLM Computation}
+\label{sec:rel:toolmaking}
+
+% TODO 【第一名危險鄰居】LATM、Voyager skill library、TroVE、CRAFT、Agent Skills，
+%      以及待核對的 arXiv 2607.08010（Amazon tool-making）。
+%      Gap：這些工作把產生的工具存下來就結束——沒有可執行 oracle、沒有覆蓋率概念、
+%      沒有回歸與版本治理。而在有責任的交付物上，這三者才決定能否上線。
+
+\section{Execution-Feedback Program Repair}
+\label{sec:rel:repair}
+
+% TODO Self-Debug、Reflexion、AlphaCodium。
+%      Gap：它們的 oracle 多來自現成單元測試；本工作的 oracle 必須從文件比對建構，
+%      而且要處理「沉默失敗」而非「程式當掉」。
+
+\section{Verification and Guardrails for LLM Output}
+\label{sec:rel:verification}
+
+% TODO LLM-as-judge 的侷限、property-based / metamorphic testing。
+%      支撐第 4 章的「要 oracle 不要 judge」與第 5 章評測器不得問 LLM 的決定。
+
+\section{Cost-Aware Agent Evaluation}
+\label{sec:rel:evaluation}
+
+% TODO Gap：多數 agent 評測只報準確率，不報變異度與攤提成本，
+%      而這兩項正是生產環境的決策依據。這一節直接支撐第 5 章的指標選擇。

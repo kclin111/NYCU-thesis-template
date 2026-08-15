@@ -1,3 +1,4 @@
+% !TEX root = ../main.tex
 \documentclass[12pt,a4paper,oneside]{book}
 \usepackage[ top=2.5cm,bottom=2.5cm,left=3cm,right=2cm ]{ geometry }
 
@@ -5,8 +6,15 @@
 
 \usepackage{xeCJK}       %讓中英文字體分開設置 
 \usepackage[UTF8,fontset=none,scheme=plain]{ctex}
-\setCJKmainfont[AutoFakeBold={4}, AutoFakeSlant=0.2]{TW-Kai}
-\setCJKmonofont[AutoFakeBold={4}, AutoFakeSlant=0.2]{TW-Kai}
+% TW-Kai 是 Overleaf 內建字體, 本機 (MiKTeX/TeX Live) 通常沒有.
+% 找不到就退回 Windows 內建的標楷體 DFKai-SB, 兩邊都能編.
+\IfFontExistsTF{TW-Kai}{
+  \setCJKmainfont[AutoFakeBold={4}, AutoFakeSlant=0.2]{TW-Kai}
+  \setCJKmonofont[AutoFakeBold={4}, AutoFakeSlant=0.2]{TW-Kai}
+}{
+  \setCJKmainfont[AutoFakeBold={4}, AutoFakeSlant=0.2]{DFKai-SB}
+  \setCJKmonofont[AutoFakeBold={4}, AutoFakeSlant=0.2]{DFKai-SB}
+}
 %\setmainfont{Times New Roman}
 
 \usepackage[T1]{fontenc}

@@ -1,44 +1,192 @@
+% !TEX root = ../main.tex
 \chapter{System Model}
 \label{ch:architecture}
 
-如果想在latex裡面插入表格, 可以搜尋latex table generator, 有很多線上網站可以參考. 我個人都是使用線上網站去產生大致的語法, 然後再根據個人喜好去做微調, wikibook有很多資料可以參考, 網址在這邊: https://en.wikibooks.org/wiki/LaTeX/Tables
+% =====================================================================
+% 骨架來源：docs/thesis/thesis-outline.md §3 + §4 + §6，併入舊 §10（泛化）的分層論述
+%
+% 【本章與第 4 章的分界】
+%   第 3 章 = 靜態存在的東西：問題的形式化、規格長什麼樣、規格怎麼被執行
+%   第 4 章 = 它怎麼被產生出來的：derive -> gate -> oracle -> repair
+%
+% 【結構調整說明】舊大綱把「泛化到 docx/xlsx」放成獨立的第 10 章最小 PoC。
+% deck 已把主評測載體翻轉成 docx/xlsx，所以泛化不再是附加章節，
+% 而是本章 §3.2 的分層論述 + 第 5 章的評測本體。DWG 降為最難的載體。
+% =====================================================================
 
-如果要引用表格, 記得在table裡加上label的語法, 然後就可以呼叫 Tab~\ref{tab1}, 寫中文的就是表~\ref{tab1}. 通常Table的caption是寫在表格的上面, 圖片則是放在下面.
+\section{Problem Formulation}
+\label{sec:design:formulation}
 
-\begin{table}[!ht]
-    \centering
-    \caption{This is a table.}
-    \label{tab1}
-    \begin{tabular}{|l|l|l|l|}
-    \hline
-        A & 1 & 4 & 7 \\ \hline
-        B & 2 & 5 & 8 \\ \hline
-        C & 3 & 6 & 9 \\ \hline
-    \end{tabular}
-\end{table}
+% ★ 這是第一個要真的動筆的地方 ★
+% 為什麼先寫這節：本章其餘各節與第 4 章都是在描述已經跑得動的東西，寫起來不會失敗，
+% 資訊量低。這一節是唯一會當場失敗的——要形式化 A: T -> S，就必須寫出 T 到底是什麼，
+% 而那份清單正好是 evaluation-protocol-v1.md §3.1 要求、公平性條款也需要的東西。
+% 如果這節寫不下去，代表系統的定義有問題，而那件事要在標註 24 個案例之前知道。
 
-後來在圖書館的``2022 研究攻略營 論文寫作實戰技巧(顏安孜老師)''看到另一種作法，網址: http://bit.ly/3yE06Hx
+\subsection{Compile-Once, Execute-Many}
+\label{sec:design:compile-once}
 
-裡面的講義有提到Excel2LaTeX，細節可以去看圖書館的連結，裡面有放講義，下方是顏安孜老師的講義截圖。(不過我個人偏好直接使用latex的表格語法, 這種轉檔的東西有時候會怪怪的)
+% TODO 兩個函數：
+%      derivation  A: T -> S     （一次，昂貴，隨機）
+%      execution   E: (S, V) -> D （多次，便宜，確定性）
+%
+% TODO 正確性條件：對案例集 {(V_i, D_i*)}，E(S, V_i) 通過 oracle O。
+%
+% TODO 這裡要老實處理一件事：A 是隨機的，所以 S 本身是一個隨機變數。
+%      「執行期變異度為零」不等於「整個方法沒有變異度」，只是把它移到 A 這一側。
+%      第 5 章會量它（同一模板獨立 derive D=3 次）。在這裡就先把話說清楚，
+%      不要等到 Results 才承認。
 
-\begin{figure}[htb]
-	\centering
-	\includegraphics[width=0.8\textwidth]{img/excel2latex.png}
-	\caption{Excel2LaTeX.}
-	\label{fig:excel2latex}
-\end{figure}
+\subsection{What the Derivation Consumes}
+\label{sec:design:inputs}
 
+% TODO ★ 本小節是整條線的解鎖點 ★
+%      逐檔列出 T 的內容。目前確定的部分：
+%        - 模板檔（docx / xlsx / dwg）
+%        - 規則文件（已與指導教授定案為 xlsx，一條規則一列，原始規則由我方轉譯）
+%        - K 個校準實例的來源資料
+%        - K 個校準實例的期望輸出
+%        - 結構化 dump 工具的輸出
+%      待查證：上面每一項是否真的進到 agent 的 context？還有沒有漏的？
+%
+% TODO 【紅線，寫進本小節】規則表不得變成答案表：
+%      不可出現目標儲存格位址、bookmark、content control tag，
+%      也不可寫成 source_field -> target_cell。界線在目標端，不在來源端。
+%      這條約束決定了 T 的資訊量上限，所以屬於形式化的一部分而非實作細節。
+%
+% TODO 這份清單定稿後，第 5 章的公平性條款直接引用它：baseline 拿到逐字相同的清單。
 
-\begin{table} [h]
-\centering
-\caption{Comparison on model efficiency and model size.}
-\begin{tabular}{c|c|c}
-\toprule[1.25pt]
-Model   & {Training \& Test }  & {Model Size }      \\ 
-\midrule
-LTD-GCN   & \textbf{11ms}    \& \textbf{4.5ms}       & 2.50M             \& 2.50M     \\ 
-LTD-GCN-i & \underline{13ms} \& \underline{4.6ms}    & 2.75M             \& 2.76M     \\  
-\bottomrule[1.25pt]
-\end{tabular}
-\label{table:model_com}
-\end{table}
+\subsection{Required Properties of the Specification IR}
+\label{sec:design:properties}
+
+% TODO 把工程決策提升為設計原則，五條：
+%      P1 結構層與值層分離（同一份 spec 服務所有實例）
+%      P2 locator 可解釋且可驗證（能指出「我認為這個欄位在這裡」並被 oracle 檢查）
+%      P3 對佈局變動有韌性，但變動超過容忍範圍時必須失敗而非猜測
+%      P4 可差分（diffable）與可版本化，支援回歸與 lineage
+%      P5 覆蓋率可量測：規格宣稱涵蓋哪些欄位，必須可被稽核
+%
+% TODO P5 現在的實作沒有滿足這條——分母由被評分的 agent 自陳（見 §4.6）。
+%      要嘛先把 rule_segmenter 做出來，要嘛在這裡誠實標明 P5 是規範性要求而非既有性質。
+
+\subsection{Design Principle: Fail Loud, Not Silent}
+\label{sec:design:failloud}
+
+% TODO 明確寫成本論文的核心設計信條，並回指第 2 章的失敗模式分類。
+
+\subsection{Scope and Applicability Conditions}
+\label{sec:design:scope}
+
+% TODO ★ 收窄後的命題寫在這裡，Introduction 只放結論句 ★
+%      適用條件（三條都要成立）：
+%        1. recurrent —— 同一份模板會被實例化多次（否則過不了 break-even）
+%        2. deterministically derivable —— 輸出可由結構化來源資料確定性推導
+%        3. explicit operational rules —— 存在明確的操作規則文件，而非需要真實推理的判斷
+%      不適用的情境在第 6 章 §6.2 展開，這裡只給定義不談後果。
+
+% =====================================================================
+
+\section{Domain-Dependent and Domain-Independent Layers}
+\label{sec:design:layers}
+
+% TODO 這一節決定論文被當成 tool paper 還是 method paper，要放在系統描述的最前面。
+%      領域相關：dump 工具、locator 的實作、target adapter
+%      領域無關：IR 結構、gates、oracle 種類、repair loop、lineage、覆蓋率計分
+%      三條載體（docx / xlsx / dwg）共用同一條 derive -> gate -> compile -> run 管線。
+
+\section{Specification IR}
+\label{sec:design:ir}
+
+% TODO 欄位定義、locator、值來源、格式化規則、約束。
+
+\section{Structured Dump as Grounding}
+\label{sec:design:dump}
+
+% TODO docx / xlsx 的 inspect 與傾印；CAD 端的 DumpDwg 與 labeled-field 解析。
+% TODO 【誠實揭露】openpyxl 的 load/save 有量測到的損失（儲存格註解、列印設定），
+%      python-docx 亦有邊界情形。這些屬於載體限制而非方法限制，但要寫出來。
+
+\section{Locator Mechanisms}
+\label{sec:design:locators}
+
+\subsection{Semantic Locators}
+\label{sec:design:loc:semantic}
+
+% TODO label -> value 的鄰近／對齊關係；以 section 限定搜尋範圍避免跨區塊誤命中；
+%      sheet alias 與 fallback 策略。
+
+\subsection{Range Locators and Source-Side Aggregation}
+\label{sec:design:loc:range}
+
+% TODO 【設計見 docs/adr/0002-range-locators-and-source-aggregation.md，實作尚未開始】
+%      第二種定位器。難題是外延：明細第幾列到第幾列、含不含小計列、插列後還對不對。
+%      外延差一列會產生「有理有據但錯」的數字，是核心指標沉默失敗的教科書範例，
+%      所以這是 P2/P3 的實質延伸而非工具功能。
+%      約束：外延必須顯式宣告，不允許隱式整欄。
+%      表達力邊界：只做讀取端。寫入端不定長度明細刻意留在邊界外（見 §3.9）。
+
+\subsection{Failure Modes and What Each Mechanism Blocks}
+\label{sec:design:loc:coverage}
+
+% TODO 做成一張表，橫軸是第 2 章的失敗模式，縱軸是各機制。
+%      這張表證明設計不是拼湊出來的。
+% TODO 【現況要誠實寫】最近一次 derive 對映 31 條規則，21 條無法確認寫入位置，
+%      成因是語意的（target_not_found / target_ambiguous）。這個數字要嘛先修掉，
+%      要嘛作為 locator 機制現階段限制寫進 §3.9。不可以靜靜略過。
+
+\section{Target Reference and Write-Back}
+\label{sec:design:targets}
+
+% TODO docx（bookmark / content control）、xlsx（具名範圍 / 座標）、dwg（handle）
+%      三種目標參照的統一契約，以及各自的可寫入性判定。
+
+\section{Deterministic Compiler and Zero-LLM Runtime}
+\label{sec:design:runtime}
+
+% TODO spec -> 可執行計畫；錯誤在編譯期而非執行期爆。受限 AST 求值。
+% TODO value layer：實例輸入的驗證與型別。
+%
+% TODO ★ 論文級紅線，寫死在這一節 ★
+%      執行期不得有 LLM fallback。related-work v1 審查判定 C4（zero-LLM execution）
+%      是唯一乾淨的 claim，所以這不是實作偏好而是命題的必要條件。
+%      具體推論：locator 定位失敗時必須失敗並回報，
+%      不可以「叫 LLM 猜一個」來降低 §3.5.3 那個失敗率。
+
+\section{Lifecycle Management}
+\label{sec:design:lifecycle}
+
+\subsection{Lineage and Versioning}
+\label{sec:design:lineage}
+
+% TODO spec 版本、產出版本、輸入版本三者的可追溯關係。
+
+\subsection{Regression Suite}
+\label{sec:design:regression}
+
+% TODO 每次 spec 變更自動重跑全部案例。
+
+\subsection{Drift Detection}
+\label{sec:design:drift}
+
+% TODO 模板改版時如何被發現、如何定位、如何最小化重新推導範圍。
+%      fingerprint 對 docx dump 已驗證可用（文字改 -> 指紋不變、bookmark 改名 -> 指紋變）。
+% TODO 【已知缺陷，修掉或寫出來】drift 目前只讀 target.handles 不讀通用的 targets，
+%      一旦有 spec 使用通用 refs，漂移偵測會直接瞎掉。
+
+\subsection{Auditability}
+\label{sec:design:audit}
+
+% TODO 為什麼這個架構能被工程流程接受，而 agent-per-instance 不能。
+%      措辭注意：用 traceability / reproducibility / change control，
+%      不要宣稱「法規要求 deterministic output」（找不到學術來源）。
+
+\section{Expressiveness Boundary}
+\label{sec:design:boundary}
+
+% TODO 老實寫現階段表達不了的東西，這是第 6 章 future work 的來源：
+%      - 寫入端不定長度明細（來源 7 筆就插 7 列）—— 插列會讓所有 positional ref 位移，
+%        連動目標轉接器、比對、清空、fingerprint、drift。
+%        替代形狀是「模板固定上限明細列位，未用列必須清空」，
+%        而這正好把 negative obligation 變成一等公民
+%      - 需要跨文件推理而非查表的欄位
+%      - 【§3.5.3 的 locator 失敗率若沒修掉，也要寫進這裡】

@@ -1,34 +1,66 @@
-\chapter{Data Fusion Algorithm}
+% !TEX root = ../main.tex
+\chapter{Methodology}
 \label{ch:method}
 
-這個是插入圖片的範例, 圖片都放在img資料夾裡面. 檔案格式有支援: JPG, PNG, PDF, EPS. 就使用自己習慣的繪圖工具, 比較常見的應該就是power point!? power point可以把繪圖區另存成PDF, JPG, PNG, 還有SVG. SVG可以再轉成PDF, 這樣圖片縮放還是會很清楚, 可以把範例的兩張圖片都放大來看, 應該可以看出差別. 
+% =====================================================================
+% 骨架來源：docs/thesis/thesis-outline.md §5 —— 全篇最有研究味的一章
+%
+% 【本章與第 3 章的分界】
+%   第 3 章 = 靜態存在的東西（規格長什麼樣、怎麼被執行）
+%   第 4 章 = 它怎麼被產生出來的
+% 對應樣板原本的 "System Model" -> "<你的演算法>" 結構，本章就是那個演算法。
+% =====================================================================
 
-最近常用的作法是, 先使用PPT畫一張大圖, 然後儲存成PDF, 如果有白邊想去除的話, 可以找線上網站裁切 (關鍵字: pdf crop free)
+\section{State Machine}
+\label{sec:der:statemachine}
 
-圖片出現的位置是由latex去決定, 有時候會出現在奇怪的地方, 這時候只能多爬文、嘗試各種參數, 或者把整段圖片code放在前面試試看.
+% TODO derive -> gate -> oracle -> repair -> converge / escalate to human
 
-overleaf上有插入圖片的介紹: https://www.overleaf.com/learn/latex/Inserting\_Images
+\section{Structural Gates}
+\label{sec:der:gates}
 
+% TODO schema 合法性、locator 可解析、覆蓋率門檻、內部一致性。
+%      重點論述：這些在花錢跑實例之前就能擋掉大部分壞規格。
+% TODO 【已量到的證據】一份壞規則不得摧毀產生它的 derive；
+%      gate 擋下的東西要能被人審查而不是靜默丟棄。
 
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=0.9\columnwidth]{img/1.system_architecture.pdf}
-  \caption{PDF Figure Example.} 
-  \label{fig:system_architecture}
-\end{figure}
+\section{Two Complementary Oracles}
+\label{sec:der:oracles}
 
-\begin{figure}[htb]
-	\centering
-	\includegraphics[width=0.9\textwidth]{img/data_preprocessing.png}
-	\caption{PNG Example.}
-	\label{fig:model}
-\end{figure}
+% TODO ★ 本論文的核心實證洞見之一 ★
+%      derive-time expected-text oracle：規格宣稱「這個欄位會產生什麼文字」，立即比對
+%      case-level oracle：實際執行後與參考輸出比對
+%      兩者抓到的錯誤類型不同，任何一方都無法取代另一方。
+%      【要給證據與失敗案例分類，第 5 章有對應的消融實驗】
+%
+% TODO 為什麼不用 LLM-as-judge：在沉默失敗面前，judge 的錯誤與生成的錯誤相關。
+%      這條論述同時支撐第 5 章「評測器不得詢問另一個 LLM」的決定。
 
+\section{Case-Repair Loop}
+\label{sec:der:repair}
 
-\section{Data Preprocessing}
-\label{sec:SMA}
-An example for section. Fig~\ref{fig:system_architecture} is PDF. Fig~\ref{fig:model} is PNG.
+% TODO 失敗案例如何回饋成修正指令；收斂性與停止條件；避免震盪（同一個 gate 反覆修）。
+% TODO 反過擬合守則：修正僅限值層，不允許為了通過某個案例而改動結構層。
 
+\section{Human in the Loop: Evidence Review}
+\label{sec:der:evidence}
 
-\subsection{2D LiDAR Data}
-An example for subsection. 寫中文就是 圖~\ref{fig:system_architecture} 跟圖~\ref{fig:model}.
+% TODO 人力從「每份文件都檢查」移轉為「一次性審查證據」。
+%      要交代介面呈現什麼證據（欄位、locator 命中位置、預期值 vs 實際值）。
+
+\section{Coverage Is the Real Bottleneck}
+\label{sec:der:coverage}
+
+% TODO ★ 核心實證洞見之二 ★
+%      在達到高準確率之後，剩餘風險主要來自「規格沒涵蓋到的欄位」而不是「涵蓋了但算錯」。
+%
+% TODO 【現況與承諾的落差，必須誠實處理】
+%      目前分母 100% 由 agent 自陳（rule_inventory），分子也是同一個 agent 的輸出。
+%      後果實測得到：同一份實作跨兩輪 derive 報出 80% -> 83%「進步」，
+%      原因只是第二輪把兩筆併成一筆。更根本的是：少枚舉一條規則分數就變高。
+%
+%      修法是 rule_segmenter（確定性切段，以內容雜湊為身分），讓規則文件成為權威分母。
+%      實作未開始（TODO.md P0 FEATURE）。
+%      若到寫作時仍未完成，本節必須把「規則文件是覆蓋率的權威來源」寫成規範性主張，
+%      並在第 5 章 Threats to Validity 明列現行計分的偏誤方向。
+%      【不可以照抄 deck 的說法】deck 承諾的是「可以對照解析後的規則文件實際計數」。

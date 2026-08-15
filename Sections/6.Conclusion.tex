@@ -1,4 +1,29 @@
+% !TEX root = ../main.tex
 \chapter{Conclusions}
 \label{ch:conclusion}
-Write your conclusion here.
- 
+
+\section{Conclusion}
+\label{sec:concl:summary}
+
+% TODO 最後寫。回收 Introduction 的三個 claim，逐一說實驗結果支持到什麼程度。
+
+\section{Limitations and When This Method Does Not Apply}
+\label{sec:concl:limits}
+
+% TODO 呼應 §3.1.5 的適用條件，但這裡談的是後果不是定義：
+%      - 模板每次都不同（沒有 recurrence，過不了 break-even）
+%      - 值域需要真實推理而非查表
+%      - 一次性任務
+%      - 規則無法以明確操作規則表達（例如需要專業判斷的裁量）
+%      主動寫出來反而加分。與 §5.10 Threats to Validity 的分工：
+%      那邊談「本實驗的結論可能怎麼不成立」，這裡談「本方法在什麼情境根本不該用」。
+
+\section{Future Work}
+\label{sec:concl:future}
+
+% TODO 來源是 §3.9 的表達力邊界，不要另外發明：
+%      - 寫入端不定長度明細（插列會讓所有 positional ref 位移，
+%        連動目標轉接器、比對、清空、fingerprint、drift）
+%      - 人工介入時間的量測（目前完全沒有量測工具）
+%      - 更大規模的模板集與跨組織的規則文件形式差異
+%      - 規則文件本身的品質問題（規則互相矛盾、規則缺漏）如何被偵測

@@ -1,0 +1,17 @@
+# LaTeX build artifacts (latexmk -C 也會清掉這些)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.xdv
+*.synctex.gz
+
+# 產出的 PDF 要不要進版控看個人習慣。
+# 目前保留 main.pdf 進版控，方便直接把當前狀態給教授看。
+!main.pdf

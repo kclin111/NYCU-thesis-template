@@ -1,28 +1,63 @@
+% !TEX root = ../main.tex
 \chapter{Introduction}
 \label{ch:intro}
 
-語法大幅度修改(!?), 改成xelatex去編譯. 現在中文內容可以直接使用\textbf{粗體}跟\textit{斜體}了. 
+% =====================================================================
+% 骨架來源：docs/thesis/thesis-outline.md §1
+% 寫作順序：情境 → 現行兩條路都不對 → 我們換一個位置放推論 → 貢獻
+% 這一章最後寫。等第 3 章把命題釘死之後再回來。
+% =====================================================================
 
-\section{測試0}
+\section{Motivation}
+\label{sec:intro:motivation}
 
-\subsection{測試1}
+% TODO 開場情境：一份模板在實務上會被實例化數十到數千次（不同案場／規格／客戶）。
+%      人工填寫耗時且易錯，是自動化的高價值目標。
+%      主評測載體是 docx／xlsx 商業表單；DWG 工程圖作為最難的載體獨立呈現。
 
-還有研究一下overleaf支援的字體清單: https://bit.ly/3MocQG3
+\section{Two Existing Approaches, Both Wrong}
+\label{sec:intro:existing}
 
-目前選擇TW-Kai, 這個字體同時支援繁體與簡體中文, 有一些特殊字可以直接顯示, 像是之前有人問過的核苷酸.
+% TODO 現行做法一：讓 agent 每次做。問題不只是慢與貴，而是每一次都重新賭一次正確性，
+%      而且失敗模式是「沉默失敗」——文件看起來對，某個數字錯了。
+% TODO 現行做法二：寫成 skill / SOP 文件。這只是把 prompt 存起來，執行期仍由 LLM 解讀，
+%      仍然隨機、仍然吃 token，而且這份 skill 的正確性從來沒有被測試過。
+% TODO 【related-work v1 審查要吃下來的三分法，放這裡】
+%      RPA = deterministic but manual
+%      agents = automatic but stochastic
+%      ours = automatic derivation + deterministic execution
+%      這是全篇最短的一句定位，不要只放在 related work。
 
-\subsubsection{測試2}
+\section{Our Position}
+\label{sec:intro:position}
 
-參考文獻格式為APA格式的話, 可以參考下方連結的說明, 這個版本的bib文獻內容也要跟著調整, 可以參考連結的bib檔內容.
+% TODO 把 LLM 用在「一次性推導出規格」，把規格編譯成確定性程式，
+%      用可執行 oracle 保證這份規格是對的。O(N)·LLM → O(1)·LLM + O(N)·確定性。
+% TODO 【命題已收窄，用這一版，不要用大綱 §0 的舊句】
+%      本方法的適用範圍限定於 recurrent template-instantiation tasks whose outputs are
+%      deterministically derivable from structured source data and explicit operational rules.
+%      收窄的理由見 benchmark-case-v1-thought.md §8.6 與 related-work v1 審查結論。
+% TODO 【單一命題，避免連言式新穎性】related-work 審查指出五個 gap 都是
+%      「別人各自有、只有我合起來」。重心要收到一句：
+%      在什麼可執行條件下，允許把 LLM 從執行路徑上永久移除？
 
-https://www.overleaf.com/read/dnqhdsxjhqqr\#2db9aa
+\section{Contributions}
+\label{sec:intro:contributions}
 
-\subsubsection{測試3}
+% TODO C1–C5，見 thesis-outline.md §0 的貢獻表。
+%      注意 C4（zero-LLM execution）被 related-work 審查判定為唯一乾淨的 claim，
+%      其他四項都有危險鄰居，論述時要放在 C4 之下而不是並列。
 
+\section{Claims and Where They Are Tested}
+\label{sec:intro:claims}
 
+% TODO 三個 claim，每一個都要在第 7 章有對應實驗：
+%      1. 正確性不輸逐實例 agent，且執行期變異度為零
+%         （但推導期變異度不是零，必須誠實報告，見第 7 章）
+%      2. 攤提後成本低一到數個數量級，存在明確 break-even 點
+%      3. 失敗會「吵」而不是沉默：模板改版時能被定位、能被修復
 
-\subsection{Reference cite example}
- 
-Video-based surveillance systems have been widely used in places such as plaza, office, factory, hotel, and conference hall for security purposes\cite{collins2000system},\cite{wang2013intelligent}. 
+\section{Thesis Organization}
+\label{sec:intro:organization}
 
-The rest of this paper is organized as follows. Chapter 2 reviews some related work. Chapter 3 introduces our system architecture. Chapter 4 explains the details of our pairing algorithm. Performance evaluation results are in Chapter 5. Conclusions are in Chapter 6.
+% TODO 最後寫。
