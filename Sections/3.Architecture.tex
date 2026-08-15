@@ -108,14 +108,23 @@ addresses, bookmark names, content-control tags, or mappings of the form
 \texttt{source\_field $\rightarrow$ target\_cell}. Target references belong to $L_t$ and
 must be derived from the template by $\mathcal{A}$; otherwise $R_d$ becomes an answer
 table and the derivation problem is leaked into its input. \textbf{Status:
-normative/aspirational only.} Neither \texttt{api.create\_dataset} nor
+normative/aspirational only.} The boundary is stated but not enforced, in two
+independent ways. First, no admission check exists: neither
+\texttt{api.create\_dataset} nor
 \texttt{derivation\_service.DerivationService.\_load\_rules} rejects an answer-bearing
-rules artifact, and the persisted projection is not structurally safe either:
-\texttt{derivation\_service.DerivationService.derive} currently copies \texttt{handles} into
-\texttt{DwgSpec.mapping\_rules}. If that projection is exported, presented as the rule
-table, or fed back as $R_d$, it exposes target answers. It must therefore remain internal
-and be stripped of target references or split from semantic rules before it can satisfy
-this boundary.
+rules artifact, so a hand-authored $R_d$ containing target addresses is accepted
+silently. Second, the persisted projection is not structurally safe:
+\texttt{derivation\_service.DerivationService.derive} copies the field's target-reference
+slot into \texttt{DwgSpec.mapping\_rules}. That slot is carrier-agnostic --- its
+interpretation follows the target kind of the template, so it holds bookmark identities
+for \texttt{.docx} and cell addresses for \texttt{.xlsx}, which are exactly the two
+artefact classes this boundary forbids. (The field retains the legacy name
+\texttt{handles} from the drawing-oriented prototype; the naming is historical and does
+not narrow the scope.) If that projection is exported, presented as the rule table, or
+fed back as $R_d$, it exposes target answers, and $\mathcal{A}$ is then measured on its
+ability to copy them rather than to derive them. It must therefore remain internal, and
+be stripped of target references or split from the semantic rules, before the boundary
+may be described as a property of the system rather than a requirement on it.
 
 \subsection{Compile-Once, Execute-Many}
 \label{sec:design:compile-once}
