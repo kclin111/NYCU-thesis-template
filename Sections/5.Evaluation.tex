@@ -6,17 +6,74 @@
 % ★ 內容權威來源：docs/thesis/evaluation-protocol-v1.md ★
 % 那份文件是完整的協定，本章是它的正文化。改動請先改那份，再同步過來。
 % 舊的 thesis-outline.md §7.2–7.4 已作廢，不要回頭參照。
+%
+% 【2026-08-23 動筆註】§5.1／§5.2／§5.3／§5.5／§5.10 已寫成正文。體例沿用第 4 章：
+% 每一節末尾一個 "Status:" 段落，主張要嘛 implementation-backed（指名檔案／實測數字），
+% 要嘛 normative（明說尚未實證並揭露偏誤方向）。不允許沒有標記的中間態——第 3 章
+% 骨架漂移的六處全部出在沒有標記的段落上。
+% 尚未動筆的 §5.4／§5.6／§5.7／§5.8／§5.9 保留原本的 % TODO 寫作規格。
 % =====================================================================
 
 \section{Research Questions}
 \label{sec:eval:rq}
 
-% TODO RQ1 正確性是否不輸逐實例 agent？
-%      RQ2 一致性如何？（注意：本方法的變異度在推導期，不在執行期）
-%      RQ3 成本結構如何？break-even N 在哪裡？
-%      RQ4 模板漂移下的行為差異？
-%      RQ5 各元件的貢獻？（消融）
-%      【舊 RQ7「是否可泛化到非 CAD 模板」已刪除】docx/xlsx 現在是主評測載體不是 PoC。
+The claim under test is not that a language model can fill in a form. It is that, for a
+bounded class of recurring template-instantiation tasks, the model can be removed from the
+recurring execution path altogether without losing correctness, traceability, or fail-loud
+behaviour. Four research questions decompose that claim; a fifth asks which components of
+the derivation procedure carry it.
+
+\begin{description}
+  \item[RQ1 --- Correctness.] Is a compiled specification's field-level semantic accuracy at
+    least as good as a per-instance agent's on the same instances, measured by the same
+    deterministic evaluator?
+  \item[RQ2 --- Consistency.] How much does repeated execution of the same task vary? The
+    question is asymmetric by construction, and the asymmetry is the point: for a
+    per-instance agent the variance is present in every one of the $N$ executions, whereas
+    for the compiled method execution is deterministic and \emph{all} of the variance sits in
+    the single derivation. RQ2 therefore has two halves, and reporting only the first would
+    be a misstatement: run-to-run variation of the baselines, and derivation-to-derivation
+    variation of the compiled specifications.
+  \item[RQ3 --- Cost structure.] What is the shape of cost against instance count? A one-off
+    derivation cost plus a near-zero marginal execution cost crosses a per-instance cost at
+    some $N$; the question is where that crossing lies, and how sensitive it is to derivation
+    retries.
+  \item[RQ4 --- Behaviour under template drift.] When the template changes underneath a
+    frozen artifact, does the method fail loudly and locate the change, and do the baselines
+    fail silently? This is the direct test of the design principle that governs the whole
+    system.
+  \item[RQ5 --- Component contribution.] Which of the structural gates, the two oracles, and
+    the repair loop are load-bearing, and which are redundant with each other?
+\end{description}
+
+An earlier version of this plan carried a sixth question --- whether the method generalizes
+beyond drawings to office documents. It has been removed rather than answered, because DOCX
+and XLSX are now the primary evaluation carriers rather than a proof of concept, and a
+question whose answer is a premise of the study design is not a research question.
+
+\paragraph{A revision to the emphasis, and the measurement that forced it.}
+The original framing put RQ1 first and treated RQ2 and RQ3 as secondary. A pilot measurement
+on the DOCX dataset changed that ordering. Running a per-instance agent three times over one
+calibration instance produced semantically correct output every time --- the cross-file
+lookup, the rounding, the gram conversion, and the extent decision were all right --- and
+three different files: three distinct output hashes in three runs, and cell-level agreement
+of 119 of 172 cells, or 69.2\%. All 53 divergent cells were formatting decisions retaken from
+scratch on each run, a thousands separator present in one run and absent in the next, and
+none of them was a semantic error.
+
+The consequence is stated here rather than in the results, because it is a claim about what
+this thesis argues: the primary contribution is not that the compiled method is \emph{more
+accurate} than a competent agent on tasks a competent agent can do. It is that accuracy is
+comparable while consistency and cost structure differ structurally. Two tempting responses
+to that pilot were considered and rejected. Raising task difficulty until the baseline fails
+would tune the benchmark towards making the comparator fail; substituting a weaker model
+would be choosing the opponent. Both are validity threats, and both are recorded as rejected
+in Section~\ref{sec:eval:threats}.
+
+\paragraph{Status: implementation-backed as a measurement, normative as a research plan.}
+The pilot above was executed and its artifacts are retained. The five questions are a plan;
+the formal experiment has not been run, and no figure in this chapter should be read as an
+answer to any of them.
 
 \section{Study Design}
 \label{sec:eval:design}
@@ -24,27 +81,104 @@
 \subsection{Why Not a Few-Shot Held-Out Split}
 \label{sec:eval:whynotfewshot}
 
-% TODO ★ 這一小節要主動寫，因為審稿人一定會問為什麼不用標準的 held-out 切法 ★
-%      few-shot / held-out 借的是 in-context learning 的範式：模型看過 K 個 examples
-%      然後泛化到 unseen tasks。本方法不是這個形狀。
-%      模板是輸入不是泛化對象——系統看得到模板不叫洩漏，叫前提，
-%      而 baseline 每次執行也看得到同一份模板，兩邊對稱。
-%      若 held-out 與 demonstration 共用模板則名不副實；
-%      若來自不同模板則本方法必須重跑 derive，那些 examples 對它毫無作用。
-%      真正需要防的是「拿資料調 prompt 而 baseline 沒被調過」，
-%      對應的工具是模板層級的 dev/eval 分離。
+The conventional evaluation for a language-model system is a few-shot held-out split: the
+model sees $K$ demonstrations and is scored on unseen tasks. That protocol borrows its
+meaning from in-context learning, and this method is not that shape.
+
+The template is an \emph{input}, not the object of generalization. The system is given the
+template on purpose; so is every baseline, on every one of its executions. Seeing the
+template is therefore not leakage but a premise, and it is symmetric across arms. This makes
+the standard split either vacuous or unfair depending on how it is drawn. If the held-out
+instances share a template with the demonstrations, nothing was held out that matters: the
+compiled specification and the agent's demonstrations both describe that template. If the
+held-out instances come from a different template, the compiled method must derive again ---
+the demonstrations do it no good at all --- and the comparison measures the cost of a
+derivation rather than generalization from examples.
+
+What the split is genuinely needed for is narrower, and is retained: preventing the situation
+in which one arm's prompts, gates, or intermediate representation were tuned on the very data
+it is scored on while the baselines were not. The instrument for that is separation at the
+\emph{template} level, and Section~\ref{sec:eval:split} reports how far that separation
+actually holds in this study.
+
+\paragraph{Status: normative, and deliberately so.} This subsection argues a design choice.
+It is included because the objection it answers is the first one a reader of a
+language-model-systems paper will raise, and because declining a standard protocol without
+stating why reads as avoiding it.
 
 \subsection{Two-Level Split}
 \label{sec:eval:split}
 
-% TODO 模板層：開發模板（S1/S2，調 prompt/gates/IR，永不進主結果表）
-%                vs 評測模板（S3/S4/S5）
-%      實例層：每份評測模板內部 K=3 校準實例（三個 arm 共用）+ M=5 評測實例（誰都不得看）
-%      DWG 不進主結果表——整套系統就是在它身上長出來的，構造上已被污染，
-%      獨立報告為案例研究（§5.9）。
-%
-% TODO 【權衡在 §5.10 展開】開發模板刻意選了兩份較弱的，
-%      好處是 prompt 較不會過擬合到評測模板的難點，壞處是除錯價值較低。
+The split has two levels, and only the first of them currently holds in full.
+
+\paragraph{Instance level.}
+Every evaluation template carries ten instances: $K=3$ calibration instances, shared by all
+three arms and the only instances any arm may see during construction; two development
+instances used for debugging; and $M=5$ sealed evaluation instances that no arm sees at any
+stage. Two of the five evaluation instances in each dataset are cases whose \emph{correct}
+behaviour is a refusal, so that an arm which always produces a file cannot score well merely
+by producing files.
+
+\paragraph{Template level.}
+The evaluation templates are two, with a third planned:
+
+\begin{itemize}
+  \item \textbf{S4} (DOCX): a Commercial Invoice and a Packing List produced together from a
+    product master file and a shipment detail file. Its principal difficulty is cross-file
+    computation --- unit price from one workbook, quantity from another --- and it is the only
+    DOCX evaluation dataset, so every DOCX claim in this thesis rests on it. Thirty-four
+    applicable rules.
+  \item \textbf{X1} (XLSX): the Directorate General of Highways monthly site-audit report
+    chain, in which $N$ real 13020A audit sheets are aggregated into one 13020D monthly
+    report. Its principal difficulties are a cross-file collection of source artifacts and a
+    layout in which one logical record occupies two physical rows. Twenty-seven applicable
+    rules.
+  \item \textbf{S5} (XLSX, not yet built): a credit-programme completion audit, chosen for
+    its density of negative obligations.
+\end{itemize}
+
+Two further items must be named, because their absence changes how the split reads.
+\textbf{S3} is a synthetic pilot dataset that was built to protocol and then rejected on the
+grounds that its layout and content were not those of a document that really circulates; it
+is retained only as a pilot for the evaluator and the range locator, is not in the main
+results table, and is not offered as evidence of external validity. \textbf{S1} and
+\textbf{S2} appear in the protocol document as a proposed assignment of two development
+templates and \emph{were never built}.
+
+\paragraph{The gap this leaves, and the direction of its bias.}
+Because S1 and S2 do not exist, development did not happen on templates disjoint from the
+evaluation set. It happened on the DWG case study, on the rejected pilot, and --- decisively
+--- on the calibration instances of S4 and X1 themselves. Three intermediate-representation
+primitives were added specifically so that the compiled arm could produce X1 at all: artifact
+collections, stacked records with a slot origin, and equality merge between resolved row sets.
+X1 is an evaluation template. The template-level separation the protocol describes is
+therefore, at present, a normative claim rather than a property of this study, and its bias
+runs \emph{in favour of the proposed method}.
+
+Following the third of the three admissible responses to such a gap, the claim is kept and
+labelled rather than quietly weakened, and the bias is disclosed again in
+Section~\ref{sec:eval:threats}. Two measurements bound its size without cancelling it. First,
+each primitive was added only after it had been observed to fail on a real file, and its
+collateral effect on the already-stored specifications was swept: the slot-alignment gate
+introduced with the third primitive was replayed against all thirty-four stored
+specifications and matched exactly the two it was written for, with no false positive on the
+five specifications of the other dataset. Second, value-level verification of the resulting
+specification was performed on development instances the derivation never saw: the fourth X1
+specification reproduced 255 of 255 scored values across the three calibration and two
+development instances using the scoring policy's own comparator, and a deliberately corrupted
+variant of the same specification scored 240. Neither measurement makes the development
+location correct; they bound how far it could have been exploited.
+
+\paragraph{A second construct-validity item, recorded here and again in
+Section~\ref{sec:eval:threats}.}
+X1's rules require projects to be reported in ascending project-number order. The real 13020D
+form prescribes no ordering; the ordering is a convention this dataset introduced so that the
+extent has a checkable manifestation. The mechanism that implements it is built and tested,
+but the question of \emph{who decided the order} belongs to dataset construct validity rather
+than to the method.
+
+\paragraph{Status: implementation-backed at the instance level, normative at the template
+level, with the bias direction stated.}
 
 \subsection{Dataset Construction}
 \label{sec:eval:dataset}
@@ -69,20 +203,61 @@
 \section{Baselines and Fairness}
 \label{sec:eval:baselines}
 
-% TODO Arm A：Direct few-shot per-instance（不建立任何持久產物）
-%      Arm B：Agent-built frozen skill（agent 自行歸納 skill，凍結後重用）
-%      Arm C：Ours（compile-once）
-%
-% TODO 三個 arm 一起才回答得了關鍵反駁：
-%      效能差距究竟只是因為「給了範例」，還是本方法的推導真的比 agent 自行歸納 skill 更有效？
-%
-% TODO 公平性條款要寫兩層：
-%      (a) 工具對等：同一套結構化傾印工具、同一個模型、同樣重試上限、同樣 wall-clock 上限
-%      (b) 素材對等：A/B 拿到與 C 的 derive 逐字相同的輸入清單（見 §3.1.2）
-%      舊 deck §7.2 只寫了 (a)。
-%
-% TODO Arm B 的凍結必須靠檔案系統（雜湊 + 唯讀掛載），不能靠 prompt。
-%      評測期間若 agent 嘗試寫入 skill 檔，記為協定違反並列入報告。
+Three arms are compared. They differ only in what persists between instances.
+
+\begin{description}
+  \item[Arm A --- per-instance agent.] For each instance, an agent is given the template, the
+    rule document, and the source data, and produces the output document. Nothing persists:
+    the next instance starts from the same prompt with no artifact carried over. This is the
+    status quo the thesis argues against, and it is deliberately a strong version of it ---
+    a current frontier model with the same structured inspection tools the proposed method
+    uses.
+  \item[Arm B --- agent-built frozen skill.] The agent is first allowed to generalize from
+    the calibration instances into a reusable artifact of its own design --- a script, a
+    checklist, a set of instructions --- which is then frozen. Every evaluation instance is
+    executed by an agent that may read that artifact and may not modify it.
+  \item[Arm C --- the proposed method.] One derivation produces a specification; every
+    instance is executed by the deterministic compiler with no model call at all.
+\end{description}
+
+\paragraph{Why three arms and not two.}
+Arm B exists to answer the strongest available objection to the result. If only A and C were
+compared, any advantage of C could be attributed to the mere existence of a persistent
+artifact rather than to anything about how that artifact is produced and verified. Arm B
+holds persistence fixed and varies only the production procedure: an agent generalizing
+freely, versus a derivation constrained by an intermediate representation, structural gates,
+and two oracles. The question Arm B answers is therefore the one that actually distinguishes
+the contribution --- is the verified derivation better than an agent's own attempt at the
+same idea?
+
+\paragraph{Fairness has two layers, and the second is the one usually omitted.}
+The first layer is \emph{tooling parity}: the same structured dump utilities, the same model,
+the same retry ceiling, the same wall-clock ceiling. The second is \emph{material parity}:
+Arms A and B receive an input list that is byte-identical to the one Arm C's derivation
+receives, because an advantage produced by handing one arm a cleaner or richer set of inputs
+is not an advantage of the method. The frozen input manifest is truth-free by construction and
+its envelope is hashable, so what each arm was given is recorded rather than asserted.
+
+Material parity has a specific consequence that must be stated because it works against the
+proposed method. The rule material given to any arm may not contain target coordinates ---
+no cell addresses, no bookmarks, no content-control tags, no drawing handles. Arm C's
+derivation therefore has to locate its own write targets, and cannot be given them; the rule
+table is not permitted to become an answer key for anyone.
+
+\paragraph{Arm B's freeze must be enforced by the filesystem.}
+An instruction not to modify the skill is not a control. The frozen artifact is hashed and
+mounted read-only for the evaluation phase; an attempt to write to it is recorded as a
+protocol violation and reported rather than silently tolerated. This matters because the
+failure it prevents --- an agent quietly improving its own skill between instances --- would
+convert Arm B into a per-instance arm while still being reported as a frozen one.
+
+\paragraph{Status: contract implementation-backed, live execution not yet built.}
+The three-arm input and evidence contract is frozen and tested: the truth-free input
+manifest, the hashable envelope, the Arm B freeze, namespace isolation for Arm C, retention
+of raw attempt evidence, and fake-capture negative controls are all implemented. The live
+adapters that actually drive Arms A and B, and the formal wrapper around Arm C, are not.
+The pilot reported in Section~\ref{sec:eval:rq} was run outside that harness and is labelled
+as a pilot for exactly that reason; it must not be read as an Arm A result.
 
 \section{Metrics}
 \label{sec:eval:metrics}
@@ -110,29 +285,99 @@
 \section{The Evaluator}
 \label{sec:eval:evaluator}
 
-% TODO 確定性：parse -> 抽值 -> 比對 ground\_truth.json -> pass/fail + 細粒度分數。
-%      不得詢問另一個 LLM「你覺得這份 Excel 對不對」（理由見 §4.3 oracle vs judge）。
-%
-% TODO 兩道自我驗證，缺一不可：
-%      正向——對 generator 自己產的 expected.* 跑必須 100% 通過
-%      反向——突變測試：對 expected.* 施加受控破壞（改一個數值、刪一列、
-%             把該空的格填上東西、改單位），評測器必須全部抓到
-%      沒有反向那道，一個永遠回答 pass 的壞評測器會讓所有 arm 都拿 100%。
-%
-% TODO 突變測試擋不到的那一半，要主動寫出來：expected.* 與 ground\_truth.json
-%      由同一支 generator 產生，generator 算錯時兩者一起錯，評測器會忠實回報 100\% 通過。
-%      突變測試驗的是評測器抓不抓得到破壞，不是 generator 算得對不對，兩者不重疊。
-%      目前的偵測手段只有逐實例抽查（每份至少 3 個欄位獨立手算，須含一個 aggregate
-%      與一個 negative obligation），那是機率性的，不是保證。
-% TODO 外延診斷的跨 arm 限制：只有 Arm C 宣告得出自己納入了哪幾列（ADR 0002 G4），
-%      A/B 不會附外延。所以主要偵測手段是 cross\_checks（同一實例內兩個受檢欄位的恆等式），
-%      C 的 anchor 比對照報但必須標明「此欄僅 C 有」，不得與 A/B 並列——
-%      否則與規則覆蓋率分母那條錯誤同型（受測方自陳的數字不能當跨 arm 的共同指標）。
-%
-% TODO 這一節換來的是對「你的 correctness 怎麼判斷」的一句話回答：
-%      Ground truth and expected artifacts are generated programmatically, and all methods
-%      are evaluated using the same deterministic evaluator, which is itself validated by
-%      mutation testing.
+All three arms are scored by one deterministic program. It parses the produced artifact,
+extracts the values at the locations the dataset's annotation manifest names, compares them
+against that instance's ground truth, and emits per-check results. It never asks a language
+model whether an output looks right, for the reason given in Section~\ref{sec:der:oracles}:
+a judge that can be wrong in the same direction as the system under test cannot bound the
+system's error.
+
+\subsection{Separate Channels, Never One Average}
+\label{sec:eval:channels}
+
+Scores are partitioned into channels, each with its own denominator: \emph{semantic} (the
+primary metric), \emph{extent} (which source rows were included), \emph{refusal} (a case
+whose correct behaviour is to refuse), \emph{structure} (the artifact opens and has the
+expected shape), \emph{presentation} (formatting, reported separately from meaning),
+\emph{untouched} (regions no field declares were not modified), and \emph{integrity} (the
+package's critical parts survived). A check whose prefix is not one of the declared channels
+fails closed rather than being scored as absent. The policy is versioned, and every result
+record carries the evaluator version, the policy version, the source hash of the scoring
+code, and the repository commit.
+
+The partition is not presentational. The one measurement that settles it: while the ``this
+slot must remain blank'' obligations were counted inside the semantic denominator, an arm
+that submitted the blank template unchanged --- writing nothing whatsoever --- scored 66.7\%
+semantic correctness on one instance. After the obligations were moved into their own
+channel the same output scores 0\%. Every individual check had been correct; what was wrong
+was which total they were added into.
+
+\subsection{Two Self-Validations, Neither Sufficient Alone}
+\label{sec:eval:selfvalidation}
+
+\paragraph{Forward.} The evaluator must score the generator's own expected artifacts at
+100\%. This catches an evaluator that reads the wrong location or compares with the wrong
+tolerance.
+
+\paragraph{Reverse.} Controlled corruptions are applied to the expected artifact and the
+evaluator must catch every one. Without this, an evaluator that always answers ``pass'' would
+give every arm a perfect score and the forward test would not notice. The current mutation
+coverage is 6 of 6 on the pilot dataset, 12 of 12 on S4, and 13 of 13 on X1; X1 is the first
+dataset in which \emph{all seven} channels have at least one mutation that exercises them,
+which closed two channels that had previously been structurally vacuous.
+
+\paragraph{A mutation test is not a validity proof, and the gap is specific.}
+The expected artifact and the ground truth are produced by one generator. If the generator
+computes a value wrongly, both are wrong together and the evaluator faithfully reports 100\%.
+Mutation testing establishes that the evaluator detects corruption; it says nothing about
+whether the generator computed correctly. The two do not overlap. The present detection
+mechanism for that residual is a per-dataset spot audit --- at least three fields per dataset
+recomputed by hand from the rule document, including one aggregate and one negative
+obligation --- which is probabilistic rather than a guarantee, and is reported as such.
+
+\subsection{A Negative Control for Every Zero}
+\label{sec:eval:negativecontrols}
+
+The evaluator and the probes around it are themselves software, and the failure mode observed
+repeatedly during construction is that a broken probe reports a serene zero: zero mismatches,
+zero problems, full marks. Measured instances during this work include a probe that used the
+wrong key name, one that omitted a worksheet prefix from every reference so that nothing
+matched anything, one whose trial compilation failed so that the comparison returned an empty
+list, and one that compared string forms where the annotation declared exact decimal
+comparison, so that twenty \emph{correct} cells were reported as wrong. Two of those report
+``looks broken'' and the rest report ``looks fine''; the second kind is the dangerous one, and
+it is indistinguishable from success by inspection.
+
+The rule adopted is therefore mechanical rather than advisory. Any reported zero or perfect
+score must be accompanied by a deliberate control that makes the figure move, and the control
+must distinguish doing the work from not doing it --- a control whose expected value also
+happens to be the result of skipping the mechanism measures nothing and never turns red. That
+last clause is not hypothetical: an ordering test was found whose expected row order equalled
+the arrival order, so disabling the sort entirely left it green.
+
+\subsection{The Extent Diagnostic Is Not Symmetric Across Arms}
+\label{sec:eval:extentasymmetry}
+
+Only Arm C declares which source rows it included; Arms A and B produce a document and no
+provenance. Scoring the extent channel from an arm's own declaration would repeat exactly the
+mistake that the coverage denominator made in Section~\ref{sec:der:coverage} --- a figure
+self-reported by the system being scored is not a cross-arm metric.
+
+The cross-arm instrument is therefore a set of \emph{cross-checks}: identities between two
+independently scored fields of the same instance, which any arm's output either satisfies or
+does not. Alongside them, each dataset's manifest declares, for every wrong-extent hypothesis,
+the values that hypothesis would produce, so a wrong extent can be \emph{named} from the
+output alone rather than inferred. The effect is measurable: an output that occupies one extra
+detail slot while leaving all six totals byte-identical passes all 112 semantic checks on one
+instance and is still identified as a specific wrong-extent hypothesis. Arm C's own resolved
+anchors are reported as supplementary evidence and are explicitly marked as available for one
+arm only; they are never placed in a column alongside A and B.
+
+\paragraph{Status: implementation-backed.}
+The shared evaluator lints, self-tests, and scores all three datasets; the scoring policy is
+frozen at version 1.1.0; the mutation suites and their per-channel negative controls are in
+the repository and run in continuous integration. What is not established is the generator's
+own arithmetic, as stated above.
 
 \section{Template Drift}
 \label{sec:eval:drift}
@@ -187,35 +432,138 @@
 \section{Threats to Validity}
 \label{sec:eval:threats}
 
-% 原則：主動寫出來反而加分。以下每一條都已經有具體事實可以填，
-% 不要寫成空泛的免責聲明。
+Each item below states what is threatened, what was measured, and which arm the bias favours.
+Items whose direction favours the proposed method are listed first, because those are the ones
+a reader has no independent way to discover.
+
+\subsection{Threats Biased Towards the Proposed Method}
+\label{sec:eval:threats:favourable}
+
+\paragraph{T1 --- development happened on evaluation templates.}
+The template-level separation described in Section~\ref{sec:eval:split} does not hold: the two
+development templates the protocol proposes were never built, and the prompts, gates, and
+intermediate representation were tuned against the calibration instances of the evaluation
+templates themselves. Three representation primitives exist specifically because the compiled
+arm could not otherwise produce X1. The bias favours Arm C, and it is not quantified --- the
+only way to quantify it is to build the missing development templates. The two bounding
+measurements are given in Section~\ref{sec:eval:split}.
+
+\paragraph{T2 --- the cell-datatype exemption.}
+The compiler stringifies every value before writing it, so a numeric field lands in a
+spreadsheet as text. The annotation rules therefore declare \texttt{presentation.datatype} as
+\texttt{any} for every field. Without that exemption Arm C would lose a point on every numeric
+field, and the study would be measuring a write-side type policy rather than the method. With
+it, a real defect --- numbers stored as text --- is not scored, and a baseline that writes
+correct types earns nothing for doing so. This is the third admissible response to a gap: the
+claim is kept, labelled normative, and the direction disclosed. It favours Arm C.
+
+\paragraph{T3 --- the rule tables are ours.}
+Even where the template is a genuine third-party artifact, the machine-readable rule
+applicability manifest that supplies the coverage denominator was written for this study. It
+weakens the objection that the templates are self-designed; it does not weaken the objection
+that the rules were written by someone who knew what the method can express. Any use of an
+externally sourced template must state this in the same breath, or it reads as padding.
+
+\paragraph{T4 --- three primitives rest on a single example.}
+Artifact collections, stacked records, and equality merge between row sets were each validated
+on one dataset, and it is the same dataset in all three cases. The key--value extent added for
+the DOCX dataset has the same property: a survey of six real government forms found no second
+instance of the shape. The failure mode this predicts is not a red test but a different form
+that silently does not fit, and no measurement in this thesis would detect it.
+
+\subsection{Threats Biased Against the Proposed Method}
+\label{sec:eval:threats:unfavourable}
+
+\paragraph{T5 --- package preservation was, until recently, unmeasurable for Arm C.}
+The integrity channel treats drawings and printer settings as critical parts of a spreadsheet
+package, which is why the government form was chosen as a dataset in the first place. Until it
+was corrected, the production write-back for XLSX serialized the workbook through a
+spreadsheet model, and that operation drops exactly those two parts --- the same two parts the
+mutation suite's integrity negative control drops, because the negative control \emph{is} a
+round trip through the same library. Arm C therefore scored 0 of 5 on integrity by
+construction, and the channel could not distinguish a correct run from a deliberately
+corrupted one.
+
+The response was the first admissible one: the write-back was replaced by a package editor
+that edits the one worksheet part that must change and copies every other byte through. The
+measurement after that change, on the same five instances, is 5 of 5 with no preservation
+violation, while re-serializing the same outputs through the spreadsheet model still yields 0
+of 5. Narrowing the channel to fit the writer was considered and rejected, because it would
+have been a reduction of the thesis claim to match the implementation. The threat is recorded
+rather than deleted, because every integrity figure produced before that correction is an
+artifact of the writer and not a result.
+
+\paragraph{T6 --- the DOCX write path has not had the same audit.}
+The correction in T5 covers XLSX only. The layout-bearing parts of a Word package have not
+been enumerated part by part, and S4 is the only DOCX evaluation dataset. Any DOCX integrity
+figure in this thesis therefore carries an unmeasured residual.
+
+\paragraph{T7 --- an unpublishable specification is not necessarily a failed one.}
+The publish gate blocks on any unresolved item, and the unresolved set has repeatedly been
+found to contain entries that are not defects. Two counters existed for the same quantity ---
+the agent's own self-reported list and the gate's canonical set --- and they were never
+compared: on the best X1 specification they read 13 and 47. Thirty-four of the 47 were detail
+cells that a repeat block writes correctly, admitted to the gate's input list because the
+author-time oracle reads expected text from that same list for a different purpose. Any count
+of unresolved items must be decomposed before it is interpreted, and a headline
+``unpublishable'' figure without that decomposition would understate the method.
+
+\subsection{Threats of Undetermined or Mixed Direction}
+\label{sec:eval:threats:mixed}
+
+\paragraph{T8 --- dataset scale.}
+Two evaluation templates exist and a third is planned, against an original intention of three
+to five per carrier. Conclusions must be descriptive; no statistical significance may be
+claimed, and no single average may be taken across carriers.
+
+\paragraph{T9 --- the inclusion criterion is itself skewed.}
+The datasets admit only tasks whose target row count is fixed, because the write side
+deliberately does not insert rows, and they exclude formula results. Both exclusions coincide
+with boundaries of the proposed method, so the excluded region may contain tasks the baselines
+can do and the compiled method cannot. This is the second admissible response --- an explicit
+expressiveness boundary --- and it is disclosed rather than argued away.
+
+\paragraph{T10 --- what the untouched channel does not reach.}
+Untouched-region comparison covers cells and paragraphs. It does not reach footnotes,
+endnotes, comments, or other independent package parts, and styles and formula results are
+outside the first version of the scoring policy by design, to avoid confounding correctness
+with whether a spreadsheet application refreshed its cached values.
+
+\paragraph{T11 --- model dependence.}
+Every derivation reported here used one model family. The ablation in
+Section~\ref{sec:eval:ablation} is the instrument for this and has not been run; until it is,
+no claim in this thesis is established as vendor-independent.
+
+\paragraph{T12 --- the correctness of the reference outputs.}
+Discussed in Section~\ref{sec:eval:selfvalidation}. Mutation testing bounds the evaluator, not
+the generator; the residual is covered only by a probabilistic spot audit.
+
+\paragraph{T13 --- two responses to the pilot that were rejected, and why.}
+After the pilot in Section~\ref{sec:eval:rq} showed the per-instance baseline to be
+semantically accurate, two adjustments were available and both were declined. Increasing task
+difficulty until the baseline begins to fail would tune the benchmark towards producing the
+desired comparison, and substituting a weaker model would amount to selecting the opponent.
+Recording them here is part of the claim: the emphasis of this thesis moved to consistency and
+cost structure \emph{because} the baseline was accurate, not because the tasks were made
+harder.
+
+\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12; normative for
+T3, T4, T8, T11, T13.}
+The items marked implementation-backed each name a measurement in this repository. The others
+are stated positions or unrun experiments, and are labelled so that no reader takes an
+intention for a result.
+
+% =====================================================================
+% 【剩下的寫作規格】2026-08-23
+% 已寫成正文：§5.1／§5.2（含三個小節）／§5.3／§5.5／§5.10。
+% 仍是 % TODO 的：§5.4 Metrics（含 5.4.1 rerun budget）、§5.6 Drift、§5.7 Ablations、
+%   §5.8 Results、§5.9 DWG case study。各節的註記就是它們的寫作規格，不要另開一份。
 %
-% TODO 資料集規模有限（3 份評測模板，低於 deck 原本的「docx/xlsx 各 3–5 份」）
-%      —— 這是要跟教授明講的縮編，論文裡也要寫，並劃清泛化主張的邊界。
-% TODO 開發模板刻意選了兩份較弱的（S1 純 1->1、S2 一模板多實例最弱），
-%      好處是不易過擬合，壞處是除錯價值較低。
-% TODO Baseline 公平性：A/B 的實作、預算、以及素材清單要完整交代。
-% TODO 外部來源模板的份量不要誇大：即使檔案是第三方的（SpreadsheetBench），
-%      規則表仍然是我們寫的。它削弱的是「模板自建」這個質疑，削弱不了
-%      「規則表是照著方法能力寫的」那個。這句話必須出現，否則會顯得在灌水。
-% TODO 模型依賴：由 §5.7 的消融回應（至少兩個模型）。
-% TODO 參考輸出的正確性：誰標的、怎麼驗的、evaluator 的突變測試涵蓋哪些破壞類型。
-% TODO 覆蓋率計分的偏誤方向：若 rule\_segmenter 未完成，分母仍由被評分的 agent 自陳，
-%      而「少枚舉一條規則分數就變高」是系統性偏向本方法的偏誤，必須明說。
-% TODO 載體限制：openpyxl / python-docx 的往返損失（儲存格註解、列印設定），
-%      屬於載體而非方法的限制，但會影響「輸出正確」的判定範圍。
-% TODO 儲存格型別的豁免，偏誤方向對本方法有利，必須明說：
-%      本系統寫入端把所有值轉成字串（compiler.py plan[handle] = str(value)），
-%      所以標註規則把 presentation.datatype 一律定為 any。若不豁免，Arm C 會在
-%      每一個數值欄位結構性失分，量到的是寫入端型別策略而非方法；但豁免的代價是
-%      「數值格寫成文字」這個真實缺陷不被計分，而 A/B 若寫入正確型別並不會因此得分。
-%      這是 CLAUDE.md 三條出路裡的第 3 條（降格為規範性主張並揭露偏誤方向）。
-% TODO 未受檢的範圍：樣式、公式結果（第一版刻意不納入，避免與「Excel 是否刷新快取」
-%      混成同一個 confound）、以及 untouched 檢查涵蓋不到註腳/尾註/註解等獨立 part。
-% TODO 收案標準本身的偏斜（外部審查指出，成立）：資料集只收「目標列數固定」的任務
-%      （ADR 0002 §5 決定寫入端不做動態插列），也不收公式結果——這兩項剛好都是本方法的邊界。
-%      要寫出方向：被排除的那類任務裡，A/B 可能做得到而 C 做不到。走 CLAUDE.md 第 2 條路
-%      （明確劃入表達力邊界）＋在此揭露，不可以不提。
-% TODO 相反方向的一條，也要寫：套件層破壞（巨集、嵌入圖片被刪）在 C 會被
-%      xlsx\_target.\_lost\_parts 判為寫入失敗，A/B 沒有這道防線卻拿滿分。
-%      評測器補上 OOXML part 比對之後這條才消失；在那之前它偏向 A/B。
+% TODO §5.3 的 Status 段承諾「A/B 的實作、預算、素材清單要完整交代」——
+%      live adapter 建好之後要補一小節寫預算（重試上限、wall-clock 上限的實際數值），
+%      現在寫會是憑空的數字。
+% TODO §5.10 的 T5 與 §4.7 的 D4／D5 互相引用：三處講的是同一組修法的三個面向，
+%      改任何一處都要同步。已於 2026-08-23 對齊過一次。
+% TODO §5.8 Results 動筆時，§5.1 的 pilot 數字（69.2%）不可升格成 Arm A 的結果，
+%      它不是走 harness 跑的。§5.3 的 Status 段已經寫了這句，兩處不可打架。
+% =====================================================================

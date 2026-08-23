@@ -166,16 +166,29 @@ canonical hash for the document job. Regression is also implementation-backed:
 \texttt{verification.verify\_output} plus
 \texttt{verification.compare\_expected} when $Y_i$ exists.
 
-This formulation deliberately localizes randomness to $\mathcal{A}$, but the current
-end-to-end DWG production path does not yet justify a zero-LLM execution claim.
-\texttt{production.ProductionController.start\_run} invokes
+This formulation deliberately localizes randomness to $\mathcal{A}$, and the execution
+path now matches that localization. An earlier revision of this chapter recorded that it
+did not: \texttt{production.ProductionController.start\_run} invoked
 \texttt{derivation\_agent.OpenCodeAgent.repair\_cad\_job} after a failed gateway job
-validation, and
-\texttt{production.\_agent\_job\_preserves\_inputs} excludes target locations from its
-business-value comparison. A repaired target can therefore be accepted and submitted
-within the same run. Eliminating that branch from execution, or changing it to create a
-reviewable draft and fail the run, is required before $\mathcal{X}$ can be described as
-strictly zero-LLM and deterministic.
+validation, and the comparison that guarded the repaired job excluded target locations,
+so a model-relocated target could be accepted and submitted inside the same run. That
+branch has since been removed from execution. A compiled job the tenant manifest rejects
+terminates the run with \texttt{CAD\_JOB\_MANIFEST\_REJECTED} and an instruction to
+re-derive, review, and republish; a cached target reference the current template no
+longer contains terminates it with \texttt{CACHED\_HANDLE\_NOT\_FOUND}. Neither is
+repaired in place, and \texttt{repair\_cad\_job} has no remaining caller on the execution
+path.
+
+\textbf{Status: implementation-backed, and pinned by a negative control rather than by
+inspection.} \texttt{test\_successful\_production\_operation\_records\_zero\_llm\_calls}
+replaces both agent repair entry points with a recorder that returns a failure, runs a
+complete production operation, and then asserts both that the recorder was never invoked
+and that the \texttt{LlmOperation} persisted for the run holds zero model calls. Reading
+the source would only show that the call site is absent today; the test also fails if a
+future change reintroduces one. This is the evidence behind claim C4, and it is
+deliberately the narrowest of the thesis's claims: it covers $\mathcal{X}$, not
+$\mathcal{A}$, and not the derivation-time repair loop of Chapter~\ref{ch:method}, which
+is by construction inside the compile step whose cost repeated execution amortizes.
 
 \subsection{Required Properties of the Specification IR}
 \label{sec:design:properties}
@@ -214,17 +227,27 @@ every missed reference.
 Semantic identities should survive admissible layout changes, while a change outside
 the declared tolerance must stop the run rather than trigger a guessed write. This
 includes the zero-LLM execution requirement: an execution-time model must not relocate a
-target. \textbf{Status: normative/aspirational only.} There is substantial partial
-support: source locators resolve by sheet/header/section semantics;
-\texttt{docx\_target.DocxTargetAdapter} distinguishes stable
-content-control/bookmark identities from positional table cells;
+target. \textbf{Status: implementation-backed for the fail-loud half; the resilience
+half is bounded and measured rather than general.} Source locators resolve by
+sheet/header/section semantics; \texttt{docx\_target.DocxTargetAdapter} distinguishes
+stable content-control/bookmark identities from positional table cells;
 \texttt{xlsx\_target.XlsxTargetAdapter} distinguishes stable defined names from
-positional coordinates; and both reject duplicate or missing references. However, the
-DWG agent-repair branch in
-\texttt{production.ProductionController.start\_run} described above can alter target
-locations and continue the same execution. Therefore the end-to-end fail-loud property
-is not presently enforced.
+positional coordinates; and both reject duplicate or missing references. The execution
+branch that previously undermined this property --- agent repair of a rejected job
+inside the run --- has been removed, as described in
+Section~\ref{sec:design:compile-once}, so a target that cannot be resolved now ends the
+run with a code instead of being relocated.
 
+What is \emph{not} claimed is the resilience half in general form. Layout tolerance is
+declared per locator mechanism, and a change outside a mechanism's declared tolerance is
+detected only insofar as the mechanism can see it. Two measured boundaries are carried
+forward to Section~\ref{sec:design:boundaries} rather than glossed here: an unused
+detail-row cell that no column of a repeat block addresses is not cleared by
+\texttt{unused\_slots: "blank"}, so a template reused from a previous reporting period
+can carry a stale value into a fresh run; and the derivation-time semantic oracle
+compares only references whose text differs between the baseline and the expected
+document, so a specification that writes into a cell the expected document leaves blank
+is structurally invisible to it.
 \paragraph{P4---diffability, versioning, and lineage.}
 The IR and its evidence must support reviewable changes, immutable publication, and
 regression over a template lineage. \textbf{Status: implementation-backed for the
@@ -240,13 +263,103 @@ uses only generic target refs remains normative until that path is implemented.
 \paragraph{P5---independently auditable rule coverage.}
 $S$ must enumerate which rules and fields it claims to cover, and the denominator must
 come from the rule artifact independently of the model being scored. \textbf{Status:
-normative/aspirational only.} The repository implements bookkeeping in
-\texttt{rule\_coverage.merge\_inventory} and \texttt{score\_coverage}, and persists the
-result from \texttt{derivation\_service.DerivationService.derive}. Nevertheless, the current
-\texttt{rule\_inventory} is generated by the same agent that produces $S$ and is unioned
-with inventories from its prior derives. A rule the agent never enumerates is absent
-from the denominator. The existing number is therefore observable but not an
-independent audit of coverage, so it does not satisfy P5.
+implementation-backed since the coverage-v2 path replaced agent self-enumeration.} The
+original implementation --- \texttt{rule\_coverage.merge\_inventory} over an agent-supplied
+\texttt{rule\_inventory}, unioned across prior derives --- did not satisfy P5 and is
+retained only to read historical specifications. A rule the agent never enumerated was
+absent from the denominator, so ``22 of 22 covered'' and ``22 of 40 covered'' were the
+same observation.
+
+The active path externalizes the denominator instead. A dataset that carries a rule
+document must also carry a frozen, versioned rule-applicability manifest;
+\texttt{rule\_coverage.parse\_rule\_manifest} verifies that the manifest names the exact
+SHA-256 of the rule-document bytes and that its declared document roles match the
+dataset's, and \texttt{derivation\_service.DerivationService.\_load\_rule\_manifest}
+refuses the derive with \texttt{RULE\_MANIFEST\_MISSING} before any paid model call, so a
+run cannot discover after the fact that its release denominator is unauditable. The agent
+supplies a \emph{disposition} for each externally assigned rule identifier and nothing
+else: \texttt{rule\_coverage.score\_manifest\_coverage} discards unknown identifiers,
+refuses duplicate dispositions, and refuses an assignment whose document roles disagree
+with the manifest, so the scored agent can neither add, remove, rename, nor move a rule
+between roles. The resulting partition into \texttt{covered}, \texttt{unresolved},
+\texttt{rejected}, and \texttt{unmentioned} is mutually exclusive and sums to the frozen
+applicable set, and \texttt{gates.canonical\_unresolved} turns every non-\texttt{covered}
+disposition into a publish gate rather than partial credit. Section~\ref{sec:der:coverage}
+develops what this measures and what it still does not.
+\subsection{Measured Boundaries of the Specification IR}
+\label{sec:design:boundaries}
+
+The five properties above state what the IR must do. This subsection states what it
+demonstrably does not, because a boundary that is only discovered by a reader running the
+system is indistinguishable from a defect the author did not notice. Each item below is
+either pinned by a test or was measured on a real artifact; where an alternative shape was
+considered and rejected, the reason is given, since ``we did not think of it'' and ``we
+rejected it'' are different claims.
+
+\paragraph{B1---\texttt{exclude} is a row-content predicate.}
+A range's \texttt{exclude} clause inspects the content of a data row. It does not inherit
+meaning from a preceding section header, so a sheet whose rows alternate between
+``current month'' and ``cumulative'' groups under one header cannot be partitioned by
+\texttt{exclude}. The rejected alternative was a domain flag such as
+\texttt{exclude\_cumulative}; it was refused because it names one agency's form inside a
+carrier-neutral IR. The general shape adopted instead is a group projection
+(\texttt{records}: a fixed \texttt{group\_size} with named row roles and per-column
+\texttt{select\_offset}), which describes the same layout without naming the domain.
+
+\paragraph{B2---stacked records assume a fixed group size.}
+\texttt{records} models ``$g$ physical rows form one logical record'' for a constant $g$.
+A record whose row count varies with its own data is outside the IR. Both the read side
+and the write side are implemented, and a specification produced by the agent for the
+XLSX evaluation template declares \texttt{records} with \texttt{group\_size: 2} and named
+row roles, so the primitive is exercised by a main evaluation dataset rather than by
+fixtures alone.
+
+\paragraph{B3---the verification basis for the collection primitives is $n=1$.}
+\texttt{artifact\_collection}, \texttt{records}, and the equality merge of
+Section~\ref{sec:design:loc:range} each have exactly one motivating real workflow. Six
+independently sourced government workbooks were scanned for a second instance of a
+repeating multi-row record block and none was found; the nearest candidate was a one-off
+label merge, not a repeating record. The generalization threshold this thesis sets for a
+new primitive is therefore not met for these three, and they are presented as
+carrier-neutral shapes with a single validating workflow rather than as generally
+validated primitives. The risk this creates is specific and worth naming: it does not
+appear as a failing test, because the tests were written from the same single example.
+It appears as a wrong result on a form nobody has tried.
+
+\paragraph{B4---merge is equality-only and inner.}
+Two resolved row sets can be joined on equal key columns. Range containment, interval
+overlap, and inequality correspondences are not expressible. The join is deliberately
+inner: supplying a default for an unmatched key would convert a missing record into a
+normal-looking number without anyone having authorized the default, which is precisely the
+silent-failure shape this thesis measures. A specification that needs the filled row must
+produce it on the source side, where the decision is visible. Merges chain, so three
+tables can be joined as two binary merges; the agent produced a chained pair unprompted.
+
+\paragraph{B5---the aggregation axis is columns only.}
+Aggregation sums named columns. The criterion is who decides the number of columns: if the
+template does, naming them is legitimate; if \emph{this instance's data} does, the
+specification has become instance-specific, and the correct modelling is a long table plus
+a pivot at write time. A row axis is not offered because a wide table's column names would
+then be data values, which would disable the author-time static check that a formula only
+names columns the row set actually has.
+
+\paragraph{B6---a repeat block clears only the cells its own columns address.}
+When a block declares \texttt{unused\_slots: "blank"}, the cells cleared in an unused slot
+are the cells that block's columns point at. A cell in the same slot that no column
+addresses is not cleared, because the IR knows a block's targets only through the strings
+its columns declare, and ``every other cell on this row'' is not something it can name.
+For a pristine template this is exactly right, and every instance of both evaluation
+datasets starts from a pristine template. For the common practice of reusing last period's
+completed report as this period's template, it means a stale value can sit on a row the
+system considers written. The behavior is pinned by a test rather than left to inference,
+and the rejected workaround---declaring a column whose value is always blank---was refused
+because it puts layout knowledge into the value layer and makes the column count grow with
+the template's width.
+
+\paragraph{B7---one instance is one filled target template.}
+A specification may declare several output documents, but their roles must be distinct; a
+run that would produce $M$ documents of the same role is refused. Relaxing this is a
+separate decision and is not claimed here.
 
 \subsection{Design Principle: Fail Loud, Not Silent}
 \label{sec:design:failloud}
@@ -303,12 +416,29 @@ independent audit of coverage, so it does not satisfy P5.
 \subsection{Range Locators and Source-Side Aggregation}
 \label{sec:design:loc:range}
 
-% TODO 【設計見 docs/adr/0002-range-locators-and-source-aggregation.md，實作尚未開始】
-%      第二種定位器。難題是外延：明細第幾列到第幾列、含不含小計列、插列後還對不對。
-%      外延差一列會產生「有理有據但錯」的數字，是核心指標沉默失敗的教科書範例，
-%      所以這是 P2/P3 的實質延伸而非工具功能。
-%      約束：外延必須顯式宣告，不允許隱式整欄。
-%      表達力邊界：只做讀取端。寫入端不定長度明細刻意留在邊界外（見 §3.9）。
+% TODO 【寫作規格 2026-08-23 更新——原註記說「實作尚未開始」，那是錯的，
+%      而且方向是低估系統。ADR 0002 是 2026-08 以後每一份規格的地基，
+%      它的讀取端、顯式邊界、來源聚合與 evidence 都在 production path 上。
+%      照舊註記寫會把已完成的能力寫成未來工作。】
+%
+%      本小節要寫的是**一條演進線**，不是一個機制，因為每一步都是被實測逼出來的：
+%        1. ADR 0002（Accepted，G1–G4／G6 已實作；G5 是 benchmark case assertion）
+%           範圍定位器 ＋ 來源端聚合。約束：外延必須顯式宣告，不允許隱式整欄。
+%           難題是外延：明細第幾列到第幾列、含不含小計列、插列後還對不對。
+%           外延差一列會產生「有理有據但錯」的數字，是沉默失敗的教科書範例。
+%        2. ADR 0004／0005：把一段列壓成純量不夠——spec 只觸及模板 14 個明細列位的
+%           前 3 個，因為校準實例只有 3 筆。那不是 compile-once 是 compile-per-instance。
+%           修法是列投影 ＋ repeat 區塊 ＋ 具名外延 ＋ 多文件。
+%        3. ADR 0006：repeat 的欄只能直接讀一個來源欄，做不到逐列計算與跨檔查表。
+%           修法是**外延先解析成 row set**，逐列公式、join、合計都在那張表上做。
+%        4. ADR 0009：`{slot}` 既沒有起點也沒有間距，所以資料區不從第 1 列開始的
+%           工作表定不到位。修法是 slot_origin + records（group_size / row_role）。
+%        5. ADR 0010：兩個 row set 的等值合併。
+%      這條線本身就是論文的論述：**表達力邊界是被資料集逼著往外推的，不是設計出來的**。
+%
+%      表達力邊界（寫進 §3.9，不要在這裡展開）：等值合併不做 outer join、不做範圍型
+%      對應；聚合軸只有欄向；records 假設 group_size 固定；ADR 0008／0009／0010 的
+%      驗證基礎都是 n=1。
 
 \subsection{Failure Modes and What Each Mechanism Blocks}
 \label{sec:design:loc:coverage}

@@ -9,58 +9,675 @@
 %   第 3 章 = 靜態存在的東西（規格長什麼樣、怎麼被執行）
 %   第 4 章 = 它怎麼被產生出來的
 % 對應樣板原本的 "System Model" -> "<你的演算法>" 結構，本章就是那個演算法。
+%
+% 【2026-08-23 動筆註】本章每一節末尾的 "Status:" 段落是刻意的體例，沿用第 3 章
+% §3.1.3 的 P1–P5：一個主張要嘛 implementation-backed（指名檔案／函式／測試），
+% 要嘛 normative（明說尚未實證並揭露偏誤方向）。不允許沒有標記的中間態。
 % =====================================================================
+
+Chapter~\ref{ch:architecture} described the specification $S$ and the deterministic
+execution that consumes it. This chapter describes the procedure that produces $S$: how a
+stochastic model proposal is turned into an artifact a deterministic layer has
+interrogated, what each interrogation can and cannot see, and where a human decision is
+required rather than optional. The organizing constraint throughout is the thesis's primary
+risk measure. A derivation procedure that maximizes the number of fields produced is easy;
+the procedure below is instead arranged so that every way a specification can be wrong is
+either detected before publication or is explicitly named as undetectable.
 
 \section{State Machine}
 \label{sec:der:statemachine}
 
-% TODO derive -> gate -> oracle -> repair -> converge / escalate to human
+Derivation is a fixed sequence of transitions in which a single stochastic step is
+surrounded by deterministic admission checks. Writing it as a state machine rather than as
+``call the agent and validate the result'' is not presentation: the order of the transitions
+is itself a result, because three of them exist only because an earlier ordering wasted a
+paid model call.
+
+Let $\Phi$ denote the transition sequence implemented by
+\texttt{derivation\_service.DerivationService.derive}. Given $T_{\mathrm{der},d}^{(n)}$ it
+produces a persisted draft specification and its evidence, $(S,\mathcal{E}_S)$. The
+transitions are:
+
+\begin{enumerate}
+  \item \textbf{Ground.} Each declared output template is inspected into a structured dump.
+    Dumps are content-addressed and cached, so re-deriving over unchanged bytes does not
+    re-extract them; the cache disposition per template is reported with the result rather
+    than hidden.
+  \item \textbf{Admit the denominator.} If the dataset carries a rule document it must also
+    carry a frozen rule-applicability manifest.
+    \texttt{DerivationService.\_load\_rule\_manifest} verifies the manifest against the
+    exact bytes of the rule document and against the dataset's declared document roles, and
+    fails the derive on any mismatch.
+  \item \textbf{Resolve the carrier.} The target kind is computed from the output artifact
+    before the agent is addressed, because the agent is instructed differently for a drawing
+    than for a document, and a \texttt{.docx} derive framed as a drawing task is told to call
+    tools that cannot exist for it.
+  \item \textbf{Warm the drawing gateway,} for the DWG carrier only. Probing a CAD gateway
+    for a \texttt{.docx} would fail against a perfectly healthy installation.
+  \item \textbf{Propose.} The agent receives the dumps, the staged original source and rule
+    artifacts, the externally assigned rule identifiers, the field-name hints from prior
+    non-degraded specifications of the same dataset, and the declared document roles. This is
+    the only stochastic transition and the only paid one.
+  \item \textbf{Admit the proposal's addressing.} A reply naming a document role the dataset
+    has no template for is refused with \texttt{AGENT\_DOCUMENT\_ROLE\_UNKNOWN}. Silently
+    dropping those fields would leave a specification that is merely short, while rule
+    coverage still counted them as covered.
+  \item \textbf{Bind.} The per-document field map, repeat blocks, and shared extents are
+    assembled, and target references the agent did not supply are recorded as unresolved with
+    a cause that distinguishes an infrastructure outage from a rule that was not understood.
+  \item \textbf{Verify the source side.} Every declared source locator is re-resolved against
+    the derivation's own sample artifacts and must reproduce the value the derivation used;
+    failures and disagreements are recorded, not assumed away.
+  \item \textbf{Resolve the detail tables.} Named extents are resolved into row sets against
+    the calibration instance's own workbooks, and their values are folded into the sample
+    data. This costs no model call---it is the same deterministic pre-pass that execution
+    runs---and it is what gives the semantic oracle of Section~\ref{sec:der:oracles} anything
+    to compare inside a repeat block.
+  \item \textbf{Gate structurally} (Section~\ref{sec:der:gates}).
+  \item \textbf{Gate semantically} (Section~\ref{sec:der:oracles}).
+  \item \textbf{Repair, bounded} (Section~\ref{sec:der:repair}).
+  \item \textbf{Make the evidence persistable.} The assembled evidence is checked for
+    encodability before the write.
+  \item \textbf{Persist a draft.} Never a published specification, and never nothing.
+\end{enumerate}
+
+Two properties of this ordering are load-bearing.
+
+\paragraph{Admission before expenditure.}
+Transitions 2, 3, and 6 all reject inputs for which the agent could nonetheless have produced
+a plausible answer. They are placed where they are because the alternative was measured: a
+dataset assembled without a declared output role was rejected in roughly half a second at zero
+model cost by \texttt{RULE\_MANIFEST\_ROLE\_MISMATCH}, whereas the same defect discovered after
+transition~5 would have discarded the entire paid run. The general rule this encodes is that a
+check whose inputs are all available before the model call belongs before the model call, even
+when placing it later would be simpler to write.
+
+\paragraph{Derivation fails to publish, not to produce.}
+No transition after the agent's reply can cause the derive to return nothing. A specification
+that will not compile is still persisted, with the reason recorded, because a broken draft a
+reviewer can read is worth more than an error message. What the procedure must not do is let
+such a draft look healthy, and that is a separate mechanism: everything that survives
+unrepaired is written into \texttt{evidence.spec\_validation}, and
+\texttt{gates.canonical\_unresolved} turns it into a publish gate
+(Section~\ref{sec:der:evidence}).
+
+\paragraph{Status: implementation-backed, with one boundary that was learned the expensive
+way.}
+Transition~13 exists because the guarantee above was once violated by the evidence record
+itself. Evidence is assembled from a dozen sources and written to a JSON column as the last act
+of a derive; a spreadsheet cell read as a native date-time value is not JSON-encodable, and the
+exception it raised inside the database write destroyed a completed paid run, leaving not even a
+broken draft. The repair is deliberately narrow:
+\texttt{derivation\_service.\_persistable\_evidence} attempts the encode and returns the evidence
+byte-for-byte unchanged when it succeeds, converting only on failure and recording in the
+evidence itself that a conversion happened. An unconditional stringify would have hidden the
+underlying defect, which is that something is putting live objects into a record. The honest
+limit is that this guarantees persistence against encode failures that have been \emph{observed};
+it does not prove the evidence assembly has no other way to fail.
 
 \section{Structural Gates}
 \label{sec:der:gates}
 
-% TODO schema 合法性、locator 可解析、覆蓋率門檻、內部一致性。
-%      重點論述：這些在花錢跑實例之前就能擋掉大部分壞規格。
-% TODO 【已量到的證據】一份壞規則不得摧毀產生它的 derive；
-%      gate 擋下的東西要能被人審查而不是靜默丟棄。
+The structural gate is the question ``does this specification run?'', asked of the deterministic
+layer rather than of the model that wrote it. Before this gate existed, derivation persisted
+whatever the agent returned; a specification declaring a lookup transform with no table to look
+in was stored as an ordinary draft and discovered much later by a human running an offline
+checker. The agent was not being dishonest. Nothing had asked.
+
+\texttt{spec\_check.check\_spec} returns every deterministic defect visible without the drawing
+gateway, as reviewable items carrying a code, the JSON path or field name, and a detail string.
+It has four parts, in a deliberate order.
+
+\begin{description}
+  \item[Schema and shape.] The IR validator rejects malformed documents, fields, extents,
+    repeat blocks, row sets, merges, and record declarations. The IR shape validator alone
+    accounts for 65 distinct 	exttt{SPEC\_*} codes out of roughly 200 prefixed error codes in
+    the feature, and those codes are the vocabulary that the repair loop and the reviewer both
+    read.
+  \item[Policy.] Runtime human input is disabled at derivation time, not merely at execution
+    time, with \texttt{SPEC\_USER\_INPUT\_DISABLED}. A field whose value comes from a person
+    at run time is a residually defined field: it lets the party being scored decide which
+    values it is not responsible for. Rejecting it at derivation rather than at execution also
+    matters for the reviewer's diagnosis, because the execution-time symptom is ``a runtime
+    parameter is missing'', which names the symptom and not the cause.
+  \item[Source binding.] \texttt{SPEC\_SOURCE\_FIELD\_UNPRODUCED} reports a field whose declared
+    source key nothing in the specification produces. It runs after the schema check, because a
+    malformed field has no trustworthy source declaration to inspect, and before the trial
+    compile, because the trial compile is precisely what hides this defect.
+  \item[Trial compile.] The specification is compiled against the derivation's own sample data
+    twice: once with every declared runtime parameter supplied and once with only the required
+    ones, which are the two branches an optional override takes. This is the important half.
+    The worst real defect it caught was a formula referencing a name that nothing provided ---
+    perfectly valid syntax, and invisible to any schema check.
+\end{description}
+
+The gate is also defended against itself. A compile that raises rather than returns an error is
+caught and reported as \texttt{SPEC\_COMPILE\_CRASHED} rather than allowed to propagate, for the
+reason given in Section~\ref{sec:der:statemachine}: an exception here occurs after the agent has
+been paid and before anything is persisted, so a single malformed rule would discard an entire
+run. The behavior is pinned by
+\texttt{test\_the\_trial\_compile\_survives\_an\_exception\_it\_cannot\_anticipate}.
+
+\subsection{What a Structural Gate Catches That an Instance Run Cannot}
+\label{sec:der:gates:value}
+
+The argument for spending effort here is that these checks run before any instance is processed
+and before any evaluation budget is spent. One concrete case makes the argument sharper than the
+general claim does. Two repeat blocks may write into the same set of slots, each reading its own
+row set, so that slot $n$ takes its values from the $n$th row of two different tables. That is an
+\emph{implicit positional join}, and its correctness depends on two conditions holding
+simultaneously by coincidence: that both row sets are ordered identically, and that both contain
+the same members. Remove the second condition --- give one source file a project number the
+register does not contain, without changing the number of files --- and every value shifts by one
+row. Row-set resolution succeeds. Both independent declared-quantity gates pass, because no
+quantity changed. Every written cell is a well-formed integer. Nothing downstream can see it.
+
+The gate added for this shape, \texttt{SPEC\_REPEAT\_SLOT\_ALIGNMENT\_UNVERIFIED}, refuses a pair
+of blocks that share a slot origin and group size while reading different, unrelated row sets. Two
+things about it are worth recording as method rather than as engineering. First, the failure it
+addresses was present in a specification that had already passed every other check. Second, its
+collateral damage was measured rather than assumed: replayed against all thirty-four previously
+derived specifications it fires on exactly two block pairs, both true positives, and zero times on
+the five specifications of the other evaluation dataset.
+
+\paragraph{Status: implementation-backed, with one known ordering defect.}
+When the schema layer reports an error, \texttt{check\_spec} returns before running the trial
+compile, and the source-binding check is likewise skipped. The short circuit has a reason --- a
+structurally broken specification has no reliable source declarations, and a compile error stacked
+on a schema error only restates it in less specific language --- but the cost is that one
+derivation reveals one layer of problems, and seeing the second layer costs another paid run. This
+is a real defect against the cost argument of RQ3 rather than against correctness; it is recorded
+as an open item, and the intended repair is to run the source-binding check over the fields that
+are structurally sound instead of skipping it for the whole specification.
+
+\paragraph{A methodological rule this section is an instance of.}
+Adding a gate changes what the gates in front of it can still observe, and no test turns red when
+an older protection becomes redundant. Two protections in this system were measured to have become
+vacuous in their own test suites exactly this way. The discipline adopted in response is that a new
+gate is accepted only after each older gate it sits in front of has been disabled in turn and its
+own test confirmed to fail. This is the negative-control requirement of
+Section~\ref{sec:der:oracles} applied to guards instead of to measurements.
 
 \section{Two Complementary Oracles}
 \label{sec:der:oracles}
 
-% TODO ★ 本論文的核心實證洞見之一 ★
-%      derive-time expected-text oracle：規格宣稱「這個欄位會產生什麼文字」，立即比對
-%      case-level oracle：實際執行後與參考輸出比對
-%      兩者抓到的錯誤類型不同，任何一方都無法取代另一方。
-%      【要給證據與失敗案例分類，第 5 章有對應的消融實驗】
-%
-% TODO 為什麼不用 LLM-as-judge：在沉默失敗面前，judge 的錯誤與生成的錯誤相關。
-%      這條論述同時支撐第 5 章「評測器不得詢問另一個 LLM」的決定。
+The structural gate establishes that a specification runs. Whether it is \emph{right} is a
+different and much harder question, and it is asked twice, by two oracles that see different
+things. Neither subsumes the other, and the argument that they are complementary is the central
+empirical claim of this chapter.
+
+\subsection{The Author-Time Expected-Text Oracle}
+\label{sec:der:oracles:authortime}
+
+A derivation dataset that supplies an expected output already states what each target reference
+should read, and the derivation's own sample data is what produced it. The comparison is therefore
+available at author time, before any instance is processed and at no model cost: compile the
+specification against the sample, and compare the planned text at each reference with the expected
+document's text at that reference. \texttt{spec\_check.\_expected\_text\_warnings} implements this.
+
+What makes it worth a section is the class of defect that nothing else sees. Consider a detail-line
+quantity that the rule document defines as units per carton \emph{times} the number of cartons,
+written instead as a sum. The two operands are small integers; the sum is $43$ where the product is
+$120$, and the amount that follows from it is $550.40$ where the correct figure is $1{,}536.00$.
+Both results are entirely normal-looking numbers: right currency, right decimal places, right
+thousands separator. The formula is valid, so the structural gate passes it. Before this oracle
+existed, the first indication would have been an evaluation run, after the money was spent, and
+only if the scorer itself had no correlated bug. The example is pinned by a test rather than merely
+described.
+
+Three exclusions are necessary, and under-excluding is the dangerous direction, because every
+exclusion missed becomes an accusation against a rule that is in fact correct. A field fed by a
+runtime parameter is excluded, because the trial compile supplies a placeholder rather than the real
+input. A two-cell row is excluded, because without current values it collapses into a single string.
+Anything computing from a field that had to be dropped as invalid is excluded, because it is
+computing from a value the complete specification would have supplied differently.
+
+Two extensions of this oracle are results rather than details.
+
+\paragraph{The key must include the document role.}
+Under multi-document specifications a target reference identifies a cell in \emph{one} file and is
+not unique across a specification, so the same reference string exists in both output documents.
+Keyed by reference alone, the oracle told the agent that the packing list's field was writing the
+wrong value; the repair loop obligingly rewrote that field to read the invoice's key; and the
+specification was persisted reporting \texttt{ok: True} while planning a letter-of-credit number
+into a shipping-port field. \textbf{The system's own correctness check manufactured a silent
+failure.} This is the strongest single argument in this thesis for the position that a verification
+mechanism must be verified with the same suspicion as the thing it verifies. The oracle was not
+absent, and it was not obviously broken. It was half-keyed, and a half-keyed oracle is worse than no
+oracle, because it actively drives repairs in the wrong direction.
+
+\paragraph{The detail table was structurally invisible until three separate blockers were removed.}
+The detail table is the largest and most computed part of a specification --- seven columns across
+fourteen slots plus six totals, in the DOCX evaluation dataset --- and it was the only part with no
+author-time semantic check at all. Two blockers were known in advance: the comparable-reference map
+read only document fields, and a repeat cell had no author-time value, because its value came from
+resolving a locator against a workbook that the trial compile does not have. Resolving extents into
+row sets at transition~9 removes the second. The third was not anticipated: every cell of a detail
+table is written by a repeat block, so no \emph{field} ever claims it, so it never appears in the
+per-field evidence --- it lands among the unexplained changes instead. With both known blockers
+fixed and the third still present, the measurement was that all 140 repeat cells had a real
+author-time value and the oracle could compare \emph{zero} of them, because the expected side of the
+comparison was empty. The number of mechanisms that were individually correct while their
+composition measured nothing is the point; this is the same shape as the vacuous-guard problem of
+Section~\ref{sec:der:gates}.
+
+\subsection{The Case-Level Oracle}
+\label{sec:der:oracles:case}
+
+The second oracle compiles the specification against a regression case's own inputs and compares the
+resulting write plan against what that case says each target must read, yielding four verdicts per
+reference: \texttt{match}, \texttt{MISMATCH}, \texttt{MISSING}, and \texttt{OVERWRITE}.
+\texttt{OVERWRITE} is not redundant with \texttt{MISMATCH}: it is the verdict for rewriting a cell
+the case says must retain its baseline text, which is the negative obligation that a purely
+value-oriented comparison cannot express. References the specification writes that the case does not
+model at all are reported separately as out-of-scope rather than as failures, so a specification is
+not penalized for a cell the annotation does not cover.
+
+The two oracles are complementary because they fail independently. The author-time oracle sees only
+the single calibration instance the derivation was given, so a rule that is correct for that instance
+and wrong in general --- a constant copied from the sample, an extent that happens to end where the
+sample's data ends --- passes it and is caught only by the case-level oracle. The case-level oracle
+in turn needs annotated cases, which cost human effort per instance, and it runs after the
+specification exists, so it cannot prevent a defect from being proposed; it can only refuse it
+afterwards. Their combination is what allows the expensive oracle to be spent on the defects the
+cheap one structurally cannot see.
+
+\subsection{Why Not an LLM Judge}
+\label{sec:der:oracles:judge}
+
+The obvious alternative to both is to ask a model whether the produced document is correct. This
+thesis refuses it, and the reason is specific to the primary risk measure rather than to a general
+preference for determinism.
+
+Silent failure is an output that is complete, well-formed, plausible, and wrong. The errors a
+generating model makes and the errors a judging model makes are drawn from correlated distributions:
+they share a training distribution, a tokenizer's numeric habits, and --- if the judge belongs to the
+same family --- a prior over what a filled form ``should'' look like. A judge is therefore least
+reliable exactly where the measurement matters most, because the outputs it is most likely to accept
+are the plausible-and-wrong ones. A judge would also make the measurement irreproducible, which
+forecloses the run-to-run identity this thesis claims for execution. The same reasoning governs the
+evaluator of Chapter~\ref{ch:evaluation}, which is deterministic for this reason and not merely for
+convenience.
+
+\paragraph{Status: implementation-backed, with three boundaries that must be stated.}
+
+\begin{enumerate}
+  \item \textbf{The author-time oracle sees only references whose text differs between the baseline
+    and the expected document.} The comparable map is assembled from per-field evidence and
+    unexplained changes, and both collect changed cells only. The consequence is exact, and belongs
+    in the limitations rather than in a footnote: a specification that writes a value into a cell the
+    expected document leaves \emph{blank} is structurally invisible to this oracle --- which is
+    precisely the negative-obligation shape that the detail tables of both evaluation datasets depend
+    on. What currently prevents the failure is that a misaligned block will almost always also
+    collide with some cell whose content did change, and that is an accident of layout rather than a
+    property of the design. The intended repair is a separate warning for ``the specification claims
+    a target the expected document leaves empty'', not an enlargement of the comparison map, because
+    pouring every blank cell of a template into evidence would both inflate it and lose the
+    distinction between deliberately blank and out of scope.
+  \item \textbf{Expected artifacts and the ground truth used to score them share an origin.} Both are
+    produced by a hand-written per-dataset generator from the rule document, which satisfies the red
+    line that expected outputs must not be produced by the system under test. It does not make them
+    independent of \emph{each other}: a misread rule produces a consistently wrong pair, and the
+    manual recomputation that would catch it has been completed for one calibration instance of the
+    XLSX dataset only. This is disclosed as a threat rather than repaired, and the direction of the
+    resulting bias is toward agreement, not toward detecting error.
+  \item \textbf{Any measurement of zero requires a negative control.} A reported ``no mismatches'' is
+    not evidence unless a deliberate corruption has been shown to make the count nonzero. This is not
+    a stylistic preference: verification probes in this project returned a serene zero while measuring
+    nothing on four separate occasions --- from a wrong key name, a wrong field name, a comparison
+    performed over an empty set after an upstream failure, and a control that changed every addition
+    including a string concatenation, so that row-set resolution failed entirely and the result was
+    $0/0$ rather than a disagreement. A control must also distinguish doing the work from not doing
+    it: an ordering test whose expected order coincided with the arrival order stayed green with the
+    sort disabled, and had therefore measured nothing since the day it was written.
+\end{enumerate}
 
 \section{Case-Repair Loop}
 \label{sec:der:repair}
 
-% TODO 失敗案例如何回饋成修正指令；收斂性與停止條件；避免震盪（同一個 gate 反覆修）。
-% TODO 反過擬合守則：修正僅限值層，不允許為了通過某個案例而改動結構層。
+Both oracles produce failures that a model could plausibly correct. Allowing it to is a research risk
+and not merely an engineering one: the agent is being shown the expected answers, and ``make case 3
+pass'' is trivially satisfied by a rule that special-cases case 3's numbers and destroys case 2. Such
+a specification is \emph{worse} than the broken one it replaced, because it now passes the tests that
+were supposed to catch it. The repair mechanism is therefore defined by its refusals.
+
+\subsection{Two Loops, Deliberately Distinct}
+
+The derivation-time loop, \texttt{DerivationService.\_verified\_spec}, runs inside transition~12 and
+closes over the structural gate and the author-time oracle. The case-level loop,
+\texttt{case\_check.repair\_against\_cases}, closes over the case-level oracle. They share their
+anti-overfitting rules and differ in what a regression means, because the case-level loop has a
+per-case signal and the derivation-time loop does not.
+
+\subsection{Four Invariants}
+
+\paragraph{I1 --- a repair may only touch the value layer.}
+The keys an agent proposal may change are enumerated in one place: which formula, which lookup table,
+which conditional cases, which format, which constant, which source key, which aggregate. Target
+references, source locators, runtime parameters, and the set of fields are re-imposed from the
+original afterwards, so a ``repair'' can never quietly become a rewrite of where a value comes from or
+where it goes. Anything the agent attempted outside that set is reported rather than applied, which
+keeps a rejected proposal auditable instead of invisible.
+
+\paragraph{I2 --- a deterministic check owns the verdict; the agent only proposes.}
+Every candidate is re-checked in full before it is taken, and a candidate that increases the error
+count is rejected outright: a repair that breaks more than it fixes is not a repair. Errors dominate
+warnings in that comparison, because trading a specification that compiles for one that agrees with
+the expected document but does not run is never the better deal. A candidate that ties on both is
+nonetheless accepted, since the agent may have rewritten a rule into a clearer form the checks cannot
+distinguish.
+
+\paragraph{I3 --- at the case level, regression is judged by \emph{which} references fail, not how
+many.}
+A count is not enough: swapping a failure on one reference for a failure on another scores
+identically, so a repair could move the damage elsewhere and still be accepted as long as some other
+case improved. The guard therefore compares failure sets, and a case that already failed to compile is
+exempt, because otherwise the moment it started compiling would be scored as a regression.
+
+\paragraph{I4 --- the loop is bounded and hands off to a human.}
+The derivation-time loop makes at most three attempts and stops early when the agent proposes nothing
+admissible, since an identical second round would only cost another call. The case-level loop stops
+after two consecutive rounds without a net gain. The rationale for stopping rather than continuing is
+substantive: at that point the ambiguous thing is usually the rule document itself, and no amount of
+additional model effort resolves an ambiguity in a requirement.
+
+\subsection{A Refusal That Was Correct}
+
+One incident is worth recording because it inverts the usual reading of a failed repair. Across two
+rounds the agent declined to add a source aggregate that the reported errors clearly called for. The
+diagnosis was not agent laziness: the repair prompt states that only the value layer may be modified,
+that key was not on the permitted list, and the resolved row set was not included in the repair
+payload. \textbf{The agent's refusal was the correct behavior for the contract it had been given.} The
+defect was in the contract. This is why invariant I1's permitted set and the repair prompt are treated
+as a single artifact: a repair loop constrained by two documents that disagree will spend paid calls
+producing correct refusals, and the symptom is indistinguishable from a model that cannot do the task.
+
+\paragraph{Status: mixed, and the mixture must not be blurred.}
+The derivation-time loop is implementation-backed and runs on every derive; the four invariants above
+are pinned by tests, including tests that a repair may not move a target reference, may not invent or
+drop fields, and may not be accepted when it worsens any single case. The case-level loop is
+implemented and tested as pure functions, and is reachable through an offline operator tool that runs
+a stored specification against its cases without the drawing gateway; \textbf{it has no caller in the
+automated derivation path or in the API.} Following this thesis's rule for a gap between claim and
+implementation, the explicit route is taken rather than the silent one: the case-level repair loop is
+presented as a designed and tested mechanism whose automated integration is future work, its absence
+is recorded as an open item, and Chapter~\ref{ch:evaluation} must not attribute any measured result to
+it.
 
 \section{Human in the Loop: Evidence Review}
 \label{sec:der:evidence}
 
-% TODO 人力從「每份文件都檢查」移轉為「一次性審查證據」。
-%      要交代介面呈現什麼證據（欄位、locator 命中位置、預期值 vs 實際值）。
+The economic claim behind compile-once is not that human effort disappears but that it changes units:
+from reviewing every produced document to reviewing one specification once. That claim is only honest
+if the review is actually possible, which imposes requirements both on what derivation records and on
+what publication refuses.
+
+\subsection{What Is Recorded}
+
+A derived specification persists an evidence record with fourteen top-level keys. On the most recent
+derivation of the XLSX evaluation dataset they include: the agent's own analysis (its unresolved items
+with causes, its field inventory, its reconciliations, its rule dispositions, and the observed tool-call
+health), the per-reference changed text and its count, per-field confidence, field renames, locator
+verification, row-set resolution, rule coverage, the specification-validation report, unexplained
+changes, unresolved labels, residual source keys, and version drift against the previous specification
+of the same lineage. Two of
+these exist specifically to keep movement from reading as churn: drift reports added, removed, and
+attribute-level changes, and the rename report identifies fields that are the same field under a new
+name. This matters because field names drift between derivations --- measured twice --- so field
+identity for review purposes is established by target reference, never by name.
+
+\subsection{What Publication Refuses}
+
+\texttt{gates.canonical\_unresolved} merges every unresolved signal into one set, de-duplicated by kind
+and reference: agent could-not-resolve items, unexplained changes in the expected document, unresolved
+labels, source locators that failed to resolve or disagreed with the sample, rule dispositions that are
+not \texttt{covered}, coverage-validation failures, and the specification-validation errors and warnings
+the repair loop could not clear. Any nonempty result blocks a normal publish. The design intent is
+stated in the module itself: nothing may be silently dropped into ``ready to use''.
+
+Publication is gated on that set together with template-fingerprint staleness, regression results, and
+human review. A human may override the reviewable gates, but the override is not free: it requires a
+written reason, and exactly what was bypassed is recorded permanently on the published version. An
+empty or structurally invalid specification is not overridable at all.
+
+Two design decisions inside this gate are worth stating, because both were mistakes first.
+\emph{Causes are carried, not collapsed.} An unresolved field says nothing on its own about why it is
+unresolved, so a gateway outage and a misunderstood rule appear identical in the specification while
+being fixed in completely different places. The run's observed tool health is therefore folded into each
+unresolved item's cause, and the review interface says so first and plainly, because a reviewer who read
+an outage as a coverage regression went looking for a rule that was never missing. \emph{The headline
+number is \texttt{covered}, never \texttt{accounted}.} Accounted is the total minus the unmentioned, so
+it counts a rule the agent enumerated and then admitted it could not implement as though the work were
+done: fifteen rules implemented, sixteen reported unresolved, and zero unmentioned, once rendered as a
+green ``34/34''. Both halves of that display were wrong in the same direction --- the flattering one ---
+which is why the direction of an error, and not only its size, is treated as a reportable property
+throughout this thesis.
+
+\paragraph{Status: implementation-backed as a mechanism; normative as an economic claim.}
+The evidence record, the merged unresolved set, the forced-publish audit trail, and the review interface
+all exist and are exercised by tests. What is \emph{not} measured is the quantity the economic argument
+needs: how long a review takes, how much of the evidence a reviewer actually uses, and whether a reviewer
+detects a defect the gates missed. No user study has been conducted. Chapter~\ref{ch:evaluation}
+therefore reports human cost only as the count and kind of items a reviewer is required to adjudicate,
+and the threats-to-validity discussion discloses that this understates human cost, since adjudicating an
+item is not free.
 
 \section{Coverage Is the Real Bottleneck}
 \label{sec:der:coverage}
 
-% TODO ★ 核心實證洞見之二 ★
-%      在達到高準確率之後，剩餘風險主要來自「規格沒涵蓋到的欄位」而不是「涵蓋了但算錯」。
-%
-% TODO 【現況與承諾的落差，必須誠實處理】
-%      目前分母 100% 由 agent 自陳（rule_inventory），分子也是同一個 agent 的輸出。
-%      後果實測得到：同一份實作跨兩輪 derive 報出 80% -> 83%「進步」，
-%      原因只是第二輪把兩筆併成一筆。更根本的是：少枚舉一條規則分數就變高。
-%
-%      修法是 rule_segmenter（確定性切段，以內容雜湊為身分），讓規則文件成為權威分母。
-%      實作未開始（TODO.md P0 FEATURE）。
-%      若到寫作時仍未完成，本節必須把「規則文件是覆蓋率的權威來源」寫成規範性主張，
-%      並在第 5 章 Threats to Validity 明列現行計分的偏誤方向。
-%      【不可以照抄 deck 的說法】deck 承諾的是「可以對照解析後的規則文件實際計數」。
+Once a specification's fields are individually accurate, the residual risk is dominated not by fields
+that are computed wrongly but by rules that no field implements at all. A rule the specification never
+addresses produces no field, no unresolved entry, and no gate: it is invisible by construction.
+Measuring that invisibility is therefore a methodological problem before it is an engineering one.
+
+\subsection{Why the First Denominator Did Not Work}
+
+The original implementation asked the agent to enumerate the rule document and counted its enumeration.
+This cannot answer the research question, for two independent reasons. A rule the agent never noticed is
+absent from the denominator, so ``22 of 22 covered'' and ``22 of 40 covered'' are the same observation;
+and omitting a rule \emph{raises} the score, which points the incentive the wrong way. Worse, the visible
+figure was not comparable between runs: one derivation counted 39 mapped fields and the next 28, reading
+as a large regression, when nine of the 39 were filler the compiler now handles itself and the truth was
+a small improvement. Unioning inventories across derivations made omissions monotonic but left the
+evaluated agent choosing the items being counted.
+
+\subsection{The External Denominator}
+
+The active mechanism externalizes the denominator. A rule document must be accompanied by a frozen,
+versioned rule-applicability manifest that lists rule identifiers, their prose, and the document roles
+each applies to --- and nothing else, in particular no target coordinates, which would make the manifest
+an answer key. The manifest is bound to the rule document by the SHA-256 of its exact bytes and to the
+dataset by its declared document roles, and a derive without it is refused before the agent runs.
+
+The agent supplies a \emph{disposition} for each externally assigned identifier and can do nothing else
+to the denominator: unknown identifiers are discarded, duplicate dispositions are refused, and an
+assignment whose document roles disagree with the manifest is refused. The resulting partition into
+\texttt{covered}, \texttt{unresolved}, \texttt{rejected}, and \texttt{unmentioned} is mutually exclusive
+and sums to the frozen applicable set. A claimed implementation is checked, not accepted: a
+\texttt{covered} disposition must name at least one field that really exists in the specification under a
+role where the manifest says the rule applies, and otherwise becomes \texttt{unmentioned} plus a
+deterministic issue. Everything that is not \texttt{covered} blocks publication; there is no partial
+credit.
+
+\subsection{Metric Plumbing Is Methodology}
+\label{sec:der:coverage:plumbing}
+
+The most consequential finding of this section is not the manifest. It is that a denominator, an
+allow-list, or an accepted spelling silently decides a reported number without failing anything, and that
+this failure mode is separate from --- and harder to see than --- a wrong mechanism. Three measured
+instances make the point.
+
+\begin{enumerate}
+  \item \textbf{A denominator that admitted the wrong checks.} The scoring policy initially counted the
+    ``this slot must remain blank'' obligations --- 120 of them on one instance --- inside the semantic
+    denominator. An arm that submitted the blank template unchanged, writing nothing at all, therefore
+    scored 66.7\% on semantic correctness. After separating those obligations into their own channel it
+    scores 0\%. Every individual check was correct; what was wrong was which total they were added into.
+  \item \textbf{An accepted spelling that decided the headline.} Rule dispositions may name a field either
+    bare or qualified by its owning block. One derivation used the qualified form throughout; the function
+    computing the numerator accepted only bare names, so eleven correct assignments were reported as naming
+    an unknown target, and coverage was displayed as 8 of 27 when the specification in fact covered 19. The
+    specification and the assignments were both correct. A naming convention had decided the thesis's
+    headline diagnostic number.
+  \item \textbf{Declared data that nothing read.} Each range in the benchmark manifests declares, for every
+    wrong-extent hypothesis, the values that hypothesis would produce. The shared evaluator did not read
+    that field at all. Once connected, an output that occupies one extra detail slot while leaving all six
+    totals byte-identical passes all 112 semantic checks and is nonetheless \emph{named} as a specific
+    wrong-extent hypothesis. The detection capability had been authored, and was simply not wired up.
+\end{enumerate}
+
+The rule adopted from these is stated as a verification obligation rather than as advice: whenever a
+headline figure moves, confirm that the mechanism changed and not the bookkeeping.
+
+\subsection{What Coverage Does and Does Not Measure}
+
+Coverage is a derivation diagnostic. It states which rules the specification claims to implement, verified
+against an external list; it does not state that an implemented rule is correct, which is the oracles'
+question, and it must not be substituted for evaluation correctness.
+
+A single coverage number for a dataset is also an incomplete description of the method, and the honest form
+is a distribution. Four independent derivations of the same XLSX dataset --- with the prompt, the payload,
+and the input bytes identical --- produced coverage of 15, 12, 19, and 23 out of 27 respectively, alongside
+structural differences of the same magnitude: one run declared three detail slots where the template has
+seven, another declared none of the cross-file collection its predecessor had used, and the number of hard
+structural errors ranged from four to zero. This variance is not noise around the method's performance; it
+\emph{is} the method's variance, and the formulation of Chapter~\ref{ch:architecture} predicts exactly where
+it lives. Because $\mathcal{A}$ is stochastic while $\mathcal{X}$ is deterministic, all of the run-to-run
+variance of this approach is concentrated in derivation and none of it is in execution. That is the
+substance of RQ2, and reporting a single derivation's coverage without the distribution would misstate it.
+
+\paragraph{Status: implementation-backed, with the residual gaps named.}
+The external denominator, the four-state partition with its checksum, the pre-agent admission of the
+manifest, the numerator validation, and the publish gate are all implemented and tested. Three things remain
+outside the mechanism. First, the manifest is authored by a human from the rule document; binding it to the
+document's bytes prevents drift but does not prove the human segmented the prose correctly, and no
+independent segmentation of the rule documents has been performed. Second, the applicable-set hash proves
+which rules were counted, not that the set is the right one. Third, coverage says nothing about a rule that
+is covered \emph{wrongly}; that separation is deliberate, and it is why this chapter needs both this section
+and Section~\ref{sec:der:oracles}.
+
+\section{Boundaries of Author-Time Verification}
+\label{sec:der:boundaries}
+
+Section~\ref{sec:design:boundaries} listed what the IR cannot express. This section lists what the derivation
+procedure cannot see, which is a different set. Each item is stated in the form that makes it checkable: what
+is claimed, what is not, and which direction the resulting bias runs.
+
+\paragraph{D1 --- an expected output supplies target coordinates that introspection alone does not.}
+When the dataset includes an expected document, the difference between baseline and expected locates the
+cells that must be written, including cells the baseline leaves blank. That is what makes blank-target binding
+work at derivation time. It does not follow that an unmarked blank paragraph or cell has a stable semantic
+anchor when only the template is available: without the expected document there is frequently nothing to
+distinguish one blank from its neighbours. Derivation-time capability and introspection-only capability are
+therefore separate claims, and only the first is demonstrated.
+
+\paragraph{D2 --- the DOCX paragraph-blank locator is a pilot-supported volatile locator.}
+The mechanism that addresses a blank run inside a Word paragraph resolves against the literal textual context
+surrounding it in the template. It is supported for the DOCX evaluation dataset and is not presented as general
+Word blank-target addressing; a template edit that changes the surrounding wording can invalidate it, which is
+why the write-back layer distinguishes stable content-control and bookmark identities from positional ones and
+fails loudly on the latter rather than guessing.
+
+\paragraph{D3 --- the label-proximity mechanism has never executed on either main evaluation carrier.}
+Labeled-field resolution is constructed only on the non-agent derivation path, and both evaluation datasets
+derive through the agent. Of thirty-three stored specifications, the thirteen fields whose target was matched
+geometrically all belong to three DWG specifications from an earlier period; the DOCX and XLSX datasets
+contribute zero. This thesis therefore does not claim that labeled-field location works on DOCX or XLSX, and the
+measurement that recently tightened that mechanism was likewise taken entirely on DWG specifications and does
+not transfer.
+
+\paragraph{D4 --- the author-time oracle sees only references whose text \emph{changed},}
+as established in Section~\ref{sec:der:oracles}. It compares text against text, so a target
+that is blank in the baseline and blank in the expected document produces no diff entry and
+is never compared. Two of the three failures that follow from this have since been closed, and
+the third has not; separating them matters, because the original single statement of D4 was
+used to justify a protection that turned out to be a coincidence.
+
+The first failure --- the specification writes a value into a reference the expected artifact
+keeps blank --- is now detected by a distinct check rather than by the oracle. Derivation
+records the set of references at which each expected artifact holds text, and any planned
+non-empty value at a reference outside that set is reported. On a fixture whose repeat block
+is offset by one row, it names the two cells carrying a project name in a row required to stay
+blank; the test that pins that fixture previously recorded, in words, that the oracle said
+nothing about them. Two silences in that check are load-bearing and are kept: a planned blank
+never warns, because an unused slot resolving to nothing is required behaviour and warning on
+it would accuse every specification whose calibration instance is shorter than the template;
+and a document for which nothing was recorded never warns, because absent evidence is not
+evidence of a blank.
+
+The second failure --- the specification cannot state that it deliberately writes nowhere ---
+is now expressible, in two forms. Where a repeat block declares column positions for only some
+of its record's row roles, the uncovered positions are \emph{derived} as implied blanks and
+written blank, with no new key in the representation: on the XLSX dataset this yields 21 cells
+that the block owns and blanks. Where the cells lie outside every block --- a signature box,
+for instance --- the document declares them, and the declaration is checked at derivation time
+against three conditions: every reference must be addressable on the template, must be blank in
+the expected artifact, and must not be written by anything else in the specification. A
+declaration failing any of the three is refused and does not reach the persisted
+specification, which keeps it out of the coverage numerator; this construct is the only one in
+the representation that \emph{relaxes} a publish gate, and without those conditions an agent
+could dispose of any rule it failed to locate by swearing the cell stays blank.
+
+The third failure remains open and is the residual meaning of D4: a reference that neither the
+expected artifact nor the specification writes, and that no rule names, is invisible. There is
+nothing at it to compare and no declaration pointing at it. The bias direction is unchanged
+and is towards accepting a specification: the oracle can only accuse, and a reference it
+cannot see is never accused.
+
+\paragraph{D5 --- an unpublishable specification is not by itself evidence of a failed
+derivation, and the count must be decomposed before it is read.}
+Two separate findings sit under this heading, and both were closed as defects rather than
+being boundaries.
+
+The first is that the unresolved set was computed as ``every field without a verified
+target'', which does not distinguish an output field whose target could not be located from an
+\emph{intermediate} field that legitimately has no target --- one carrying a located source
+value into another field's formula and never written anywhere. The most recent XLSX derivation
+contained five such fields, each with a working source locator, each read by a
+header-summary formula, and each recorded as blocking publication. The correction has two
+halves and the order between them is not optional: intermediate inputs were first admitted to
+the executable locator set, and only then were they exempted from the unresolved report. The
+exemption is safe solely because a new hard error now refuses any specification whose formulas
+read a name that nothing executable can supply. That error was not decoration: replayed across
+the thirty-five stored specifications it named eleven, and each of the eleven genuinely fails
+to compile, with no false positive. Before it existed, the two specifications this thesis had
+recorded as its best both stored a successful validation result and both failed at execution
+with an unknown formula field.
+
+The second is that two counters reported the same quantity and were never compared. Every
+narrative of ``\(n\) unresolved items'' in this project's records is the length of the agent's
+own self-reported list; the publish gate counts a different, canonical set. On the best XLSX
+specification the two read 13 and 47, and 34 of the 47 were detail cells that the repeat block
+writes correctly --- admitted to the gate's input because the author-time oracle reads expected
+text from that same list, for a different question. The gate now excludes cells a block owns,
+recomputed from the specification rather than read from an evidence tag, so that a later
+version which removes the block puts the same cells back to blocking. No test failed while this
+was wrong, because what was wrong was a count.
+
+What remains true, and is why D5 stays in this list: after both corrections the XLSX
+specification is still unpublishable, and decomposing the residue shows the gate is right to
+block it. One of the remaining rules requires a value in a column that the specification
+declares no field for at all, and execution confirms the consequence --- three cells scored as
+silent failures on instances the derivation never saw, because the calibration instance
+happened to leave that column empty. A count of unresolved items conflates a gate that is too
+strict with a gate that is doing its job, and the two are repaired in opposite directions.
+
+\paragraph{D6 --- the shared evaluator is not a general parser.}
+The evaluator of Chapter~\ref{ch:evaluation} supports the shapes the datasets in this thesis require, and
+refuses unsupported shapes with an error rather than scoring them as absent. That keeps an unparsed structure
+from being counted as a correct blank, but it also means the evaluator's carrier coverage is bounded by the
+datasets, and a new dataset may require extending it before it can be scored at all.
+
+% =====================================================================
+% 【剩下的寫作規格】
+% TODO §4.1 加一張狀態機圖（十四個轉移 ＋ 三個 fail-closed 出口）。
+%      圖比列表更能表達「唯一的付費呼叫被夾在兩層確定性檢查中間」。
+% TODO §4.3 需要一張「兩個 oracle 各自抓得到什麼」的對照表，橫軸是失敗形態
+%      （常數過擬合／外延差一列／格式／跨文件同名 ref／負向義務／隱含位置合併）。
+%      第 5 章的消融實驗對應這張表。
+% TODO §4.6 的 15/12/19/23 分佈要與第 5 章的 D 次獨立 derive 設計交叉引用。
+%      **注意**：那四跑不是按正式協定跑的（是開發過程的產物），寫的時候要講清楚，
+%      不可以當成 D 次正式重複來報。
+% TODO §4.5 的「人力單位改變」若最後仍無使用者研究，第 5 章 threats 要有對應段落，
+%      §4.5 的 Status 段已先寫成 normative，兩處不可打架。
+% =====================================================================
