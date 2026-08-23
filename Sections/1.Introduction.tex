@@ -5,59 +5,555 @@
 % =====================================================================
 % 骨架來源：docs/thesis/thesis-outline.md §1
 % 寫作順序：情境 → 現行兩條路都不對 → 我們換一個位置放推論 → 貢獻
-% 這一章最後寫。等第 3 章把命題釘死之後再回來。
+%
+% 【2026-08-23 動筆註】六節全部寫成正文。體例沿用第 3／4／5 章：每一節末尾一個
+% "Status:" 段落，主張要嘛 implementation-backed（指名檔案／函式／測試／實測數字），
+% 要嘛 normative（明說尚未實證並揭露偏誤方向）。不允許沒有標記的中間態。
+%
+% 【本章特有的風險】導論天然想寫成果，而正式實驗尚未執行。§5.1 的 pilot 數字
+% （69.2%、347/350、255/255）一律不得升格成正式結果——§5.3 的 Status 段已寫死
+% 這句話，兩處不可打架。本章引用 pilot 一律標明它不是 harness 跑的。
+%
+% 【動筆前查證推翻的骨架註記，四處，全部沒有照抄】
+%   1. §1.5 原註記寫「每一個 claim 都要在第 7 章有對應實驗」——第 7 章是舊 11 章
+%      大綱的殘留，實際是第 5 章。thesis-outline.md §0 貢獻表的「對應章節」欄
+%      （C1→3、C2→4、C3→5、C4→6、C5→7）同樣是舊編號，本章 §1.4 已重新對映。
+%   2. §1.2 原註記寫 skill 路線「這份 skill 的正確性從來沒有被測試過」——
+%      benchmark/harness 的 Arm B skill freeze/provenance/read-only contract 已實作
+%      （contracts.py 的 FROZEN_SKILL_REQUIRED、FROZEN_SKILL_PROVENANCE_REQUIRED、
+%      runner.build_arm_b_skill），照抄會把本論文自己建的對照組寫成稻草人。
+%   3. §1.1 原註記寫「DWG 工程圖作為最難的載體獨立呈現」——DWG 不進主表的權威理由
+%      是**開發污染**（evaluation-protocol-v1.md §2.1：「整套系統就是在它身上長出來
+%      的」），不是「最難所以獨立展示」。照抄會把一條效度預防措施寫成賣點。
+%   4. 舊大綱 Intro 的 claim 1 寫「正確性不輸且**變異度為零**」——執行期為零、
+%      推導期不為零且已量到（spec 32 vs 33，prompt 與 payload 完全相同）。
+%      §1.5 已改寫成兩半，與 §5.1 RQ2 的不對稱敘述一致。
 % =====================================================================
 
 \section{Motivation}
 \label{sec:intro:motivation}
 
-% TODO 開場情境：一份模板在實務上會被實例化數十到數千次（不同案場／規格／客戶）。
-%      人工填寫耗時且易錯，是自動化的高價值目標。
-%      主評測載體是 docx／xlsx 商業表單；DWG 工程圖作為最難的載體獨立呈現。
+A shipping department issues a commercial invoice and a packing list for every outbound
+consignment. The two documents are the same two Word files every time; what changes is
+which products went out, in what quantity, in how many cartons. Unit prices come from a
+product master workbook, quantities from a shipment detail workbook, and the totals,
+conversions and roundings that tie them together are written down in an operating
+procedure. In a different sector entirely, a highways district office produces one
+monthly site-audit report by aggregating however many individual audit sheets its
+inspectors filed that month --- again the same spreadsheet every month, again a written
+procedure saying which column of which sheet feeds which cell.
+
+Both are instances of the same task shape. A fixed \emph{template} is filled from
+structured \emph{source data} according to \emph{explicit rules}, over and over, with
+only the values changing. The work is mechanical, it is high volume, and it is on the
+critical path of something consequential: the first pair of documents is presented at
+customs, and the second is a governmental audit record. Both are also real; the two
+evaluation datasets of this thesis are built from artifacts of exactly these two kinds,
+downloaded rather than drawn, and Section~\ref{sec:eval:split} describes them.
+
+\paragraph{What makes the task worth automating is not what makes it hard.}
+That a person filling in the same form for the four hundredth time is slow and will
+eventually mistype a figure is the obvious argument, and it is the weaker one. The
+difficult property is the shape of the failure. When this task goes wrong, nothing
+crashes. There is no exception, no malformed file, no red mark. What is produced is a
+document that opens correctly, is laid out correctly, is complete, is plausible in every
+respect --- and carries one wrong number. This thesis calls that a \emph{silent failure},
+and treats it as the primary risk to which every design decision reported here is
+answerable. Section~\ref{sec:design:failloud} states the principle that follows from it,
+and Section~\ref{sec:eval:channels} states how the evaluation scores it as a distinct
+outcome rather than folding it into an accuracy figure.
+
+Silent failure is not a hypothetical hazard invoked to motivate a system. Two measurements
+in this thesis are specimens of it, and one of them was produced by the proposed method
+itself. A rounding-mode defect in the host language turned a volumetric weight of $0.053$
+into $0.052$ on three of the DOCX dataset's seventy-nine detail rows, one of them inside a
+sealed evaluation instance; every gate in the system passed both values, because both are
+entirely ordinary-looking figures with the right unit and the right precision
+(Section~\ref{sec:design:runtime}). Separately, executing the best available compiled
+specification for the XLSX dataset over five instances produced 347 correct semantic values
+out of 350, and all three failures were a remarks column that the specification did not
+write at all --- a column that stayed blank, in a file that was otherwise perfect. The
+system's own publish gate had flagged the underlying gap, and the classification the
+evaluator assigned those three cells was \texttt{silent\_failure}. A system whose motivating
+risk is one it can be shown to have produced stands on firmer ground than one whose
+motivating risk is only asserted.
+
+\paragraph{Carriers.}
+The main evaluation carriers of this thesis are DOCX and XLSX. Engineering drawings (DWG)
+remain in the repository and are reported as a case study, and the reason they are excluded
+from the main result table is neither their difficulty nor their prestige: the entire system
+was originally built on a drawing template, so every prompt, gate and representation choice
+was tuned against it, and any figure it produced would be contaminated by construction. That
+is a validity precaution, not a showcase, and Section~\ref{sec:eval:dwg} reports the case
+study on those terms. The secondary observation --- that a drawing is the carrier on which
+serializing a document into tokens destroys the most meaning, since its semantics live in
+spatial layout, layers and block attributes --- belongs to Section~\ref{sec:rel:formats},
+where it is deliberately treated as an observation about representation rather than as an
+argument for the method, because an argument of the form ``models cannot read this format''
+is answered by the next model.
+
+\paragraph{Status: the risk characterization is implementation-backed; the volume premise is
+normative.}
+The two specimens of silent failure above are measurements taken in this repository: the
+rounding sweep over the DOCX dataset's detail rows, and the offline execution probe over
+five XLSX calibration and development instances that scored 347 of 350 semantic checks with
+three \texttt{silent\_failure} outcomes. Neither is a formal experimental result; both were
+produced outside the evaluation harness, and Section~\ref{sec:eval:results} is where results
+belong. The premise that a template is instantiated tens to thousands of times is \emph{not}
+measured anywhere in this thesis: no survey of real instantiation frequency was conducted,
+and the two datasets carry ten instances each because that is how many were built, not
+because that reflects field practice. The bias direction is favourable to the method, since
+recurrence is precisely the condition under which a one-off derivation cost amortizes; it is
+therefore stated as an admission condition rather than as a finding in
+Section~\ref{sec:design:scope}, and Section~\ref{sec:eval:metrics} reports a break-even
+instance count rather than assuming one.
 
 \section{Two Existing Approaches, Both Wrong}
 \label{sec:intro:existing}
 
-% TODO 現行做法一：讓 agent 每次做。問題不只是慢與貴，而是每一次都重新賭一次正確性，
-%      而且失敗模式是「沉默失敗」——文件看起來對，某個數字錯了。
-% TODO 現行做法二：寫成 skill / SOP 文件。這只是把 prompt 存起來，執行期仍由 LLM 解讀，
-%      仍然隨機、仍然吃 token，而且這份 skill 的正確性從來沒有被測試過。
-% TODO 【related-work v1 審查要吃下來的三分法，放這裡】
-%      RPA = deterministic but manual
-%      agents = automatic but stochastic
-%      ours = automatic derivation + deterministic execution
-%      這是全篇最短的一句定位，不要只放在 related work。
+Two ways of automating this task are already available, and this thesis argues that both are
+placed wrongly rather than that either is incompetent. The distinction matters, because a
+contribution that depends on its comparators being bad is worth as much as its comparators.
+
+\subsection{Approach One: Let an Agent Do It Every Time}
+\label{sec:intro:existing:agent}
+
+The immediately available approach is to hand each instance to a language-model agent along
+with the template, the rules and the source files, and take the document it returns. Nothing
+persists between instances: the four hundredth consignment starts from the same prompt as
+the first, with no artifact carried over.
+
+The usual objections --- that this is slow, and that it costs a model call per instance ---
+are true and are the least interesting things wrong with it. Latency and price are
+quantities, and quantities improve. The structural objection is that correctness is
+\emph{re-gambled on every instance}. Each document is an independent draw; a run that is
+right tells you nothing about the next run, because nothing about the first run is carried
+into the second. And since the failure mode of this task is silent
+(Section~\ref{sec:intro:motivation}), an independent draw whose bad outcomes are invisible is
+a poor thing to place on the critical path of a customs declaration.
+
+A pilot measurement reported in Section~\ref{sec:eval:rq} sharpens this into a claim that can
+be defended rather than assumed, and it did so by refuting the easier version of it. Running
+a current frontier agent three times over one instance of the DOCX dataset produced
+semantically accurate output on all three runs --- the cross-file lookup, the rounding, the
+gram conversion and the aggregation extent were correct every time --- and three different
+files, with cell-level agreement between runs of 69.2\%. Every divergence was a formatting
+decision retaken from scratch on each run. So the defensible statement of the objection is
+not that a competent agent gets this task wrong. It is that a competent agent gets it
+\emph{differently right} each time, that no artifact exists which could be reviewed,
+versioned, diffed or signed off before the four hundred documents are produced, and that the
+cost of the correctness it does achieve is paid four hundred times. That pilot was run
+outside the evaluation harness and is labelled a pilot throughout this thesis for exactly
+that reason; it is not an Arm A result.
+
+\subsection{Approach Two: Freeze It as a Skill or an SOP}
+\label{sec:intro:existing:skill}
+
+The second approach is the one a practitioner reaches for after paying for the first: have
+the agent generalize from a few worked examples into a reusable artifact --- a skill file, a
+checklist, a written procedure, a script --- freeze it, and have an agent follow it on every
+subsequent instance. This is the correct instinct. It is the same instinct this thesis has,
+and the disagreement is about where the artifact sits relative to the execution path rather
+than about whether there should be one.
+
+An earlier draft of this chapter dismissed the approach on the grounds that such an
+artifact's correctness is never tested. That statement is not available to this thesis,
+because this thesis builds a tested version of it. Arm B of the evaluation
+(Section~\ref{sec:eval:baselines}) constructs exactly this: an agent generalizes freely from
+the calibration instances into an artifact of its own design, the artifact is hashed and
+frozen, its provenance is bound to the build envelope it came from, and every evaluation
+instance is then executed by an agent that may read it and may not modify it. The freeze is
+enforced by the harness rather than by instruction --- an attempt to write to the frozen
+artifact is recorded as a protocol violation --- and the resulting documents are scored by
+the same deterministic evaluator as every other arm.
+
+The real deficiency is therefore narrower, and it survives the strengthening. Whatever is
+frozen, \emph{execution still routes through a model}. The artifact is read, interpreted and
+applied by an inference step, so the output remains stochastic, remains priced per instance,
+and remains capable of being right in a different way each time. And the artifact carries no
+executable contract: nothing binds it to the rule document it was derived from, nothing
+enumerates which rules it covers, and nothing fails when the template underneath it changes.
+Its correctness, if established at all, is established the same way the agent's output was
+--- by looking at what came out. What this thesis proposes is not a better artifact but a
+different \emph{kind} of artifact: one that a deterministic program can execute without
+interpretation, and against which those questions can be asked mechanically.
+
+Refusing the straw man has a price, and it is worth naming, because it is the reason Arm B
+exists at all. If only the per-instance agent and the proposed method were compared, any
+advantage of the latter could be attributed to the mere existence of a persistent artifact
+rather than to anything about how that artifact is produced and verified. Arm B holds
+persistence fixed and varies only the production procedure, which makes it the strongest
+available objection to this thesis's result, and it is entitled to win.
+
+\subsection{The Positioning, in One Sentence}
+\label{sec:intro:existing:taxonomy}
+
+Placing the two approaches beside the older automation tradition yields the shortest
+statement of where this work sits:
+
+\begin{itemize}
+  \item \textbf{Robotic process automation and template-filling tooling} are
+    \emph{deterministic but manual}. Execution is a program, so it repeats exactly, can be
+    versioned and can be audited --- but a person authored the mapping, cell address by cell
+    address, and a person must reauthor it when the form changes.
+  \item \textbf{Per-instance agents} are \emph{automatic but stochastic}. Nobody writes the
+    mapping, and nothing about the execution repeats exactly.
+  \item \textbf{This work} is \emph{automatic derivation plus deterministic execution}. A
+    model authors the mapping once, under verification; a program executes it thereafter.
+\end{itemize}
+
+The two existing approaches are not opposite errors to be split between. They occupy
+opposite corners of one table, and the empty corner is the one in which the authoring is
+automatic and the execution is not. Section~\ref{sec:rel:rpa} develops this against the
+literature.
+
+\paragraph{Status: the taxonomy is normative; the criticism of approach one is
+pilot-supported; the criticism of approach two is implementation-backed.}
+The three-way division is a positioning argument, not a measurement: no experiment in this
+thesis varies automation paradigm, and no citation is attached to the characterization of
+robotic process automation until Chapter~\ref{ch:relatedwork} supplies one. The claim about
+approach one rests on a three-run pilot on a single instance, which is enough to establish
+that run-to-run divergence exists and nowhere near enough to quantify it; the formal
+instrument is the rerun budget of Section~\ref{sec:eval:reruns}, which has not been executed.
+The claim about approach two is implementation-backed in the specific sense that matters ---
+the frozen-skill contract exists, is tested, and enforces freezing, provenance and read-only
+execution in \texttt{benchmark/harness/contracts.py} and
+\texttt{harness.runner.build\_arm\_b\_skill} --- but the live adapter that would drive Arm B
+against a model has not been built, so no comparative figure for it exists.
 
 \section{Our Position}
 \label{sec:intro:position}
 
-% TODO 把 LLM 用在「一次性推導出規格」，把規格編譯成確定性程式，
-%      用可執行 oracle 保證這份規格是對的。O(N)·LLM → O(1)·LLM + O(N)·確定性。
-% TODO 【命題已收窄，用這一版，不要用大綱 §0 的舊句】
-%      本方法的適用範圍限定於 recurrent template-instantiation tasks whose outputs are
-%      deterministically derivable from structured source data and explicit operational rules.
-%      收窄的理由見 benchmark-case-v1-thought.md §8.6 與 related-work v1 審查結論。
-% TODO 【單一命題，避免連言式新穎性】related-work 審查指出五個 gap 都是
-%      「別人各自有、只有我合起來」。重心要收到一句：
-%      在什麼可執行條件下，允許把 LLM 從執行路徑上永久移除？
+\subsection{One Question}
+\label{sec:intro:position:question}
+
+The related-work survey conducted for this thesis returned an uncomfortable finding: of the
+five gaps the work initially claimed, every one had a neighbour that already occupied it.
+Amortizing model computation into reusable tools, repairing programs from execution feedback,
+verifying generated output against oracles, versioning and auditing generated artifacts, and
+evaluating agents for cost rather than accuracy alone are each somebody's contribution
+already. A novelty claim of the form ``others have these five things separately and we have
+them together'' is a conjunction, and a conjunction is the weakest shape a contribution can
+take, because it invites the reader to remove one conjunct at a time.
+
+This thesis therefore argues one question:
+
+\begin{quote}
+Under which \emph{executable conditions} may a language model be removed from the recurring
+execution path permanently, without losing correctness, traceability, or fail-loud
+behaviour?
+\end{quote}
+
+The word carrying the weight is \emph{permanently}. The nearest neighbour the survey
+identified --- an industrial system that observes the same problem, compiles recurring
+procedural steps once into tested tools before deployment, and carries labelled-case repair,
+versioning and audit logging --- nonetheless retains a model agent at run time, with code
+generation available as a fallback. A fallback is not a small residue of the same design; it
+is the difference between a guarantee and a tendency, because the properties one wants from
+determinism are exactly the properties a fallback suspends, and it suspends them precisely
+on the inputs that are unusual. Section~\ref{sec:rel:toolmaking} places this work against
+that neighbour in detail.
+
+\subsection{Where the Inference Goes}
+\label{sec:intro:position:move}
+
+The move is to relocate inference rather than to eliminate it. A model is used once, to
+derive a \emph{specification} from the template, the rules and a small number of calibration
+instances. That specification is an explicit intermediate representation --- not a prompt,
+not a script, not natural language --- and it is subjected to executable verification before
+it may be used: structural gates that reject malformed or unexecutable specifications, a
+semantic oracle that compares what the specification would write against an independently
+produced expected document, and a bounded repair loop whose invariants forbid a repair from
+becoming a rewrite. Every instance thereafter is produced by a deterministic compiler and a
+format-specific writer, with no model call at all.
+
+In cost terms the arrangement replaces $O(N)$ model invocations with $O(1)$ model invocations
+plus $O(N)$ deterministic executions, where $N$ counts instances of one template revision.
+Two qualifications belong in the same breath as that expression, since both are places where
+it is routinely overstated. The constant is per template \emph{revision}, not per template
+for all time: a template that changes requires a new derivation, and detecting that it
+changed is itself part of the design (Section~\ref{sec:design:drift}). And the $O(1)$ is not
+free of the repair loop --- every retry, every rejected candidate and every failed attempt is
+derivation cost and is counted as such, which is the rule Section~\ref{sec:eval:metrics}
+imposes on the cost table.
+
+\subsection{The Conditions Under Which This Is Allowed}
+\label{sec:intro:position:conditions}
+
+The question above asks for conditions, and the answer is three of them, stated as an
+admission test in Section~\ref{sec:design:scope} and referred to throughout as C-I, C-II and
+C-III: the task must \emph{recur}; its outputs must be \emph{deterministically derivable}
+from structured source data without judgement; and its mapping must be written down as
+\emph{explicit operational rules}. They are independent, and each carries an operational
+test --- a question one could actually ask before adopting the method --- which is not
+restated here. The scope of this thesis is precisely the region in which all three hold. A
+task containing one field requiring professional discretion fails C-II for that field, and
+the honest response is to carve the field out rather than to widen the method; a task
+performed once fails C-I and should be done by hand or by an agent, since nothing about this
+method is cheap at $N=1$.
+
+\subsection{What the Position Costs}
+\label{sec:intro:position:cost}
+
+Relocating inference does not eliminate randomness. It moves it, and this thesis is obliged
+to report where it went. The derivation is stochastic, and the same prompt over the same
+bytes does not produce the same specification. Two consecutive derivations of the XLSX
+dataset with byte-identical inputs differed in ways that matter: one declared three detail
+slots and the other seven, one emitted a source-artifact collection and the other emitted
+none, one covered fifteen of twenty-seven rules and the other twelve, and one raised four
+hard structural errors while the other raised none. That is not a footnote --- it is the
+direct subject of RQ2 in Section~\ref{sec:eval:rq}, and reporting this method as having
+``zero variance'' while omitting it would be a misstatement, since the variance is not absent
+but relocated into the one step whose output a human is expected to review.
+
+What is bought in exchange is that the variance is now attached to an artifact that exists
+before any document is produced. A specification can be gated, oracle-checked, diffed against
+its predecessor, hashed, and refused; a distribution over four hundred future documents
+cannot. Section~\ref{sec:der:evidence} makes the corresponding argument about human effort,
+which does not disappear but changes units.
+
+\paragraph{Status: the relocation is implementation-backed; the amortization is normative.}
+That execution contains no model call is the narrowest and best-evidenced claim in this
+thesis, and it is pinned by a negative control rather than by inspection:
+\texttt{test\_successful\_production\_\allowbreak operation\_records\_\allowbreak
+zero\_llm\_calls} replaces both
+agent repair entry points with a recorder that returns a failure, runs a complete production
+operation, and asserts both that the recorder was never invoked and that the operation's
+persisted model-call count is zero (Section~\ref{sec:design:compile-once}). Reading the
+source would establish only that no call site exists today; the test also fails if one is
+reintroduced. The derivation-variance figures above are measured, from two paid derivations
+recorded in the repository. The amortization claim is \emph{not} established: no break-even
+instance count has been measured, because the formal cost experiment has not been run. What
+exists is one derivation's cost on the XLSX dataset --- 553.4 seconds of wall clock, one
+model call, 128{,}299 input and 20{,}068 output tokens, with no repair round triggered ---
+taken by an offline probe rather than by the harness, which fixes the order of magnitude of
+the numerator and says nothing about the denominator. The bias direction is favourable to the
+method: an unmeasured break-even point is easy to assume is small.
 
 \section{Contributions}
 \label{sec:intro:contributions}
 
-% TODO C1–C5，見 thesis-outline.md §0 的貢獻表。
-%      注意 C4（zero-LLM execution）被 related-work 審查判定為唯一乾淨的 claim，
-%      其他四項都有危險鄰居，論述時要放在 C4 之下而不是並列。
+The five contributions of this work are conventionally listed in parallel. They are not
+parallel, and presenting them so would misrepresent which of them is load-bearing. The
+related-work survey's verdict was that C4 --- zero-model execution --- is the only claim
+without a close neighbour, and this chapter takes that verdict literally: C4 is the claim,
+and the other four are what make C4 worth having rather than merely true.
+
+The distinction is not rhetorical. Removing a model from an execution path is trivially
+achievable by a system that deterministically writes the wrong thing, or that can express
+only tasks so simple nobody needed a model for them, or whose one derivation nobody can
+check, or whose advantage nobody can measure. Each of the remaining contributions closes one
+of those escapes.
+
+\begin{description}
+  \item[C4 --- zero-model execution.] Once a specification is published, producing an
+    instance involves no model call: the deterministic compiler emits a carrier-neutral write
+    plan and a format-specific adapter applies it. Cost, latency and run-to-run variance
+    collapse together, and lineage, versioning and regression become available because there
+    is a versioned program to trace. Developed in Section~\ref{sec:design:compile-once} and
+    Section~\ref{sec:design:runtime}; its consequences for consistency and cost are RQ2 and
+    RQ3.
+  \item[C1 --- the formalization, and what the representation must satisfy.] Template
+    instantiation is formalized as compile-once/execute-many over a stateful two-stage input
+    model, and five properties are stated that any specification representation must satisfy
+    for the split to be sound --- separation of structure from instance values chief among
+    them. This is what stops C4 from being a claim about one program: without it, ``we removed
+    the model'' describes an implementation. Developed in
+    Section~\ref{sec:design:formulation} and Section~\ref{sec:design:properties}; its measured
+    limits are B1--B7 in Section~\ref{sec:design:boundaries}.
+  \item[C2 --- the specification IR and its locator mechanisms.] A carrier-neutral
+    intermediate representation with semantic source locators, range extents with declared
+    inclusion boundaries, grouped multi-row records, and equality merges between resolved row
+    sets. This is what stops C4 from being a claim about tasks too easy to have needed a model:
+    it determines which real forms are expressible at all. Developed in
+    Section~\ref{sec:design:ir} and Section~\ref{sec:design:locators}.
+  \item[C3 --- the derivation closed loop.] The one expensive step is made reviewable: an
+    agent proposes, executable structural gates and two independent oracles judge, a bounded
+    repair loop with anti-overfitting invariants revises, and a human reviews evidence rather
+    than output. This is what stops C4 from being a claim nobody can check. Developed in
+    Chapter~\ref{ch:method}; its limits are D1--D6 in Section~\ref{sec:der:boundaries}.
+  \item[C5 --- the cost-aware evaluation method and datasets.] A three-arm protocol with
+    material and tooling parity, a deterministic evaluator with separate channels and no model
+    in the scoring loop, silent failure as an explicit outcome class, an externally supplied
+    coverage denominator, and two datasets built from genuine third-party forms. This is what
+    stops C4 from being a claim nobody can measure. Developed in Chapter~\ref{ch:evaluation}.
+\end{description}
+
+\paragraph{A correction to the contribution table this thesis inherited.}
+The planning document that defines C1--C5 maps them onto an eleven-chapter structure
+(C1$\rightarrow$3, C2$\rightarrow$4, C3$\rightarrow$5, C4$\rightarrow$6, C5$\rightarrow$7).
+This thesis has six chapters, and the mapping above supersedes it. Any reading that expects
+C5 in a seventh chapter is reading the superseded plan.
+
+\paragraph{Status: C4 implementation-backed; C1 and C5 mixed; C2 and C3 each carry one named
+component that is not evidenced.}
+C4's evidence is the negative-control test named in Section~\ref{sec:intro:position:cost}, and
+it is deliberately the narrowest claim here: it covers execution, not derivation, and not the
+derivation-time repair loop, which is by construction inside the step whose cost repeated
+execution amortizes.
+
+C1's formalization and its five properties are stated against the implementation, and each
+property's status is given individually in Section~\ref{sec:design:properties}. The IR has a
+published contract, and the honest measurement is that 24 of the 35 specifications stored in
+this repository satisfy it, so the contract is described as published and partially enforced
+rather than as an invariant.
+
+C2 is implementation-backed for the source-side locators, extents, records and merges, each
+exercised on a main evaluation dataset. One named component is not: label-proximity resolution
+of \emph{write} targets has never executed on either main carrier --- of thirty-three stored
+specifications, the thirteen geometrically matched fields all belong to three drawing
+specifications from an earlier period, and the two office-document datasets contribute zero.
+The response taken is the third admissible one: the mechanism is retained and described, and
+this thesis does not claim it works on DOCX or XLSX (Section~\ref{sec:der:boundaries}, D3).
+The original C2 statement also claims resilience to layout change; the drift-\emph{detection}
+half of that is measured (Section~\ref{sec:design:drift}), while the
+re-derivation-under-drift half is RQ4 and has not been run.
+
+C3 is implementation-backed for the derivation-time loop, its four invariants, and the
+author-time oracle, all of which run on every derivation and are pinned by tests. The
+case-level repair loop named in the original C3 statement is implemented and tested as pure
+functions but \emph{has no caller on the automated path} --- only an offline operator tool and
+tests reach it. It is therefore presented as a designed and tested mechanism whose automated
+integration is future work, and no measured result may be attributed to it
+(Section~\ref{sec:der:repair}).
+
+C5's protocol, evaluator, scoring policy, coverage denominator and both datasets exist and are
+frozen; the live adapters for two of the three arms do not, and no arm has been scored under
+the protocol. C5 is thus a contributed \emph{method}, not yet a contributed result.
 
 \section{Claims and Where They Are Tested}
 \label{sec:intro:claims}
 
-% TODO 三個 claim，每一個都要在第 7 章有對應實驗：
-%      1. 正確性不輸逐實例 agent，且執行期變異度為零
-%         （但推導期變異度不是零，必須誠實報告，見第 7 章）
-%      2. 攤提後成本低一到數個數量級，存在明確 break-even 點
-%      3. 失敗會「吵」而不是沉默：模板改版時能被定位、能被修復
+Three claims follow from the position above. Each is stated here in the form it will be tested
+in, with the research question that operationalizes it and the section that reports it. None
+of the three has a result yet; Table~\ref{tab:intro:claims} records what currently stands
+behind each, so that a reader can tell an intention from a finding at a glance.
+
+\paragraph{Claim 1 --- correctness is comparable, and execution-time variance is zero while
+derivation-time variance is not.}
+Field-level semantic accuracy of a compiled specification is at least as good as a
+per-instance agent's on the same instances under the same evaluator, and repeated execution of
+a published specification is bit-identical. The second half of the claim must be stated with
+its complement or it is false as an account of the method: the variance has moved to the
+derivation, so the claim is reported as two measurements --- run-to-run variation of the
+baselines, and derivation-to-derivation variation of the specifications. An earlier
+formulation of this claim said simply ``variance is zero''; that formulation is withdrawn.
+Operationalized by RQ1 and RQ2, measured by the metrics of Section~\ref{sec:eval:metrics}
+under the rerun budget of Section~\ref{sec:eval:reruns}, and reported in
+Section~\ref{sec:eval:results}.
+
+\paragraph{Claim 2 --- amortized cost is lower by one to several orders of magnitude, and
+there is an identifiable break-even instance count.}
+The comparison is between a per-instance model cost and a one-off derivation cost plus a
+near-zero marginal execution cost; the quantity of interest is where the two cross, and how
+sensitive that crossing is to derivation retries. Repair and regeneration are derivation cost
+and are not excluded from the denominator. Operationalized by RQ3, defined in
+Section~\ref{sec:eval:metrics}, reported in Section~\ref{sec:eval:results}.
+
+\paragraph{Claim 3 --- failure is loud rather than silent.}
+When the template changes underneath a frozen artifact, the compiled method fails at a gate
+with an auditable error that locates the change, at a bounded re-derivation cost, whereas an
+arm that interprets the template afresh produces a plausible wrong document. This is the
+direct test of the design principle of Section~\ref{sec:design:failloud}, and the reason the
+evaluation scores silent failure as its own outcome class. Operationalized by RQ4 and reported
+in Section~\ref{sec:eval:drift}.
+
+\begin{table}[htbp]
+\centering
+\caption{The three claims, the questions that operationalize them, and what currently stands
+behind each. No cell in the rightmost column is an experimental result.}
+\label{tab:intro:claims}
+\begin{tabular}{p{0.17\linewidth}p{0.07\linewidth}p{0.19\linewidth}p{0.42\linewidth}}
+\hline
+\textbf{Claim} & \textbf{RQ} & \textbf{Reported in} & \textbf{Current evidence} \\
+\hline
+1. Comparable correctness; zero execution variance, non-zero derivation variance &
+RQ1, RQ2 &
+Sections~\ref{sec:eval:metrics}, \ref{sec:eval:reruns}, \ref{sec:eval:results} &
+Execution determinism follows from C4's negative-control test. Derivation variance is
+measured, on two paid derivations with identical inputs. Comparative accuracy: not measured;
+a three-run pilot outside the harness found the baseline semantically accurate. \\
+2. Order-of-magnitude amortized cost; identifiable break-even $N$ &
+RQ3 &
+Sections~\ref{sec:eval:metrics}, \ref{sec:eval:results} &
+One derivation's cost is recorded by an offline probe. Per-instance baseline cost, marginal
+execution cost, and the crossing point: not measured. \\
+3. Loud failure under template drift &
+RQ4 &
+Section~\ref{sec:eval:drift} &
+Fingerprint sensitivity measured on both evaluation templates, with a library round trip as
+the control; gate refusals are implemented and tested. Comparative behaviour of the baselines
+under drift: not measured; no drift variant has been built. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Status: all three claims are normative as results; their mechanisms are
+implementation-backed.}
+No arm has been executed under the evaluation protocol, so no figure in this thesis answers
+any of the three claims. What is implementation-backed is the machinery each claim will be
+tested with, together with those components of each claim that are not comparative: execution
+determinism, derivation-time variance, gate refusals and fingerprint sensitivity are
+measurements, whereas parity, cost ratio and the drift behaviour of the baselines are not. The
+bias direction of stating the claims ahead of the results is favourable to the method, and the
+mitigation adopted is the one used throughout this thesis --- every section ends with a
+paragraph like this one. Section~\ref{sec:eval:threats} enumerates the threats to validity
+individually, with those favouring the proposed method listed first.
 
 \section{Thesis Organization}
 \label{sec:intro:organization}
 
-% TODO 最後寫。
+Chapter~\ref{ch:relatedwork} characterizes the task and its failure modes, describes the
+representation mismatch between document formats and token sequences, and places this work
+against its neighbours --- tool-making and skill libraries, programming by example,
+execution-feedback repair, output verification, and cost-aware agent evaluation --- with the
+three-way positioning of Section~\ref{sec:intro:existing:taxonomy} developed against the
+literature.
+
+Chapter~\ref{ch:architecture} and Chapter~\ref{ch:method} divide the system along a deliberate
+seam. Chapter~\ref{ch:architecture} is what exists statically: the formalization, the
+properties a specification representation must satisfy, the admission conditions, the
+carrier-dependent and carrier-neutral layers, the representation itself, the locator
+mechanisms, and how a specification is executed and governed over its lifetime.
+Chapter~\ref{ch:method} is how a specification comes to exist: the derivation state machine,
+the structural gates, the two oracles, the repair loop and its invariants, the evidence a human
+reviews, and how rule coverage is computed against an external denominator.
+
+Chapter~\ref{ch:evaluation} gives the evaluation: the research questions, why a conventional
+few-shot held-out split is the wrong instrument here, the two-level split and the datasets, the
+three arms and the two layers of fairness between them, the evaluator and its separate scoring
+channels, the drift and ablation designs, the results, the drawing case study, and the threats
+to validity. Chapter~\ref{ch:conclusion} answers only what the evidence supports, and develops
+the limitations as future work.
+
+\paragraph{Two conventions the reader should know in advance.}
+First, \textbf{every section of this chapter and of Chapters~\ref{ch:architecture} through
+\ref{ch:evaluation} ends with a paragraph beginning ``Status:''}, which states whether that
+section's claims are implementation-backed --- naming a file, a function, a test or a
+measurement --- or normative, in which case the direction of the resulting bias is disclosed.
+There is no unmarked middle state. The convention exists because it was earned. Successive
+audits of this document's own outline, conducted while writing Chapters~\ref{ch:architecture}
+to \ref{ch:evaluation}, found ten passages in which the plan had drifted away from the
+implementation --- every one of them unmarked, and every one of them in the direction of
+\emph{understating} the system or misidentifying which side a risk favoured. One described C4,
+the central claim of this thesis, as not yet supportable, months after the execution path it
+doubted had been removed. Auditing the present chapter's notes before writing it found four
+more, and it is worth recording that three of those four lean the opposite way: they overstated
+the method, by dismissing a comparator that this thesis in fact implements and tests, by
+presenting a validity precaution about the drawing carrier as a showcase, and by claiming a
+variance of zero that holds only for half of the pipeline. An introduction is the chapter most
+likely to drift towards its own argument, which is the reason this one carries the same
+convention as the rest.
+
+Second, the boundaries of the method are stated in three separate lists that are deliberately
+not merged: Section~\ref{sec:design:boundaries} (B1--B7) is what the representation can
+express, Section~\ref{sec:der:boundaries} (D1--D6) is what author-time verification can see,
+and Section~\ref{sec:design:boundary} (E1--E3) is what the running system still cannot promise.
+``A merge does not perform outer joins'' and ``the oracle cannot see a cell that is blank on
+both sides'' are different kinds of statement, and a combined list would invite a reader to
+treat them as interchangeable.
+
+\paragraph{Status: descriptive.}
+This section makes no claim requiring evidence. The audit it refers to is recorded in the
+project's completed-work log, and each of its seven findings is reflected in the section it
+corrected.
