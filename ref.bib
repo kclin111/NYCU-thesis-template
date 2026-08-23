@@ -1,258 +1,453 @@
-@article{zhao2003face,
-  title={Face recognition: A literature survey},
-  author={Zhao, Wenyi and Chellappa, Rama and Phillips, P Jonathon and Rosenfeld, Azriel},
-  journal={ACM Computing Surveys},
-  volume={35},
-  number={4},
-  pages={399--458},
-  year={2003}
-}
+% Bibliography for this thesis.
+%
+% Provenance: every entry below was reconciled against
+% docs/thesis/refs/manifest.md, which records for each work the claimed
+% metadata from the related-work survey, the fetched title/authors/date, and
+% the DBLP-preferred venue. The survey draft
+% (docs/thesis/related-work-v1-thought.md) labelled 26 of these works
+% "arXiv preprint" where DBLP records a peer-reviewed venue; the venue field
+% here follows DBLP, not the survey draft. Two survey entries named a title
+% that the cited arXiv identifier no longer carries (WorldGUI, Prompt2Task);
+% both appear here under the fetched title.
+%
+% The template's original sample entries (face recognition, RFID tracking)
+% were unrelated boilerplate and were removed; git history retains them.
+%
+% Integrity check: python benchmark/probe/thesis_cite_audit.py
+% An entry that nothing cites produces NO LaTeX warning at all, because
+% IEEEtran prints only cited entries -- which is why that probe exists. Three
+% such entries went unnoticed here on 2026-08-23 and they were the C2 danger
+% neighbours.
 
-@inproceedings{ali2016overview,
-  title={Overview of fingerprint recognition system},
-  author={Ali, Mouad MH and Mahale, Vivek H and Yannawar, Pravin and Gaikwad, AT},
-  booktitle={Proc. IEEE International Conference on Electrical, Electronics, and Optimization Techniques (ICEEOT)},
-  pages={1334--1338},
-  year={2016}
-}
+% ---------------------------------------------------------------------
+% Programming by example and program synthesis
+% ---------------------------------------------------------------------
 
-@article{hong1998fingerprint,
-  title={Fingerprint image enhancement: algorithm and performance evaluation},
-  author={Hong, Lin and Wan, Yifei and Jain, Anil},
-  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  volume={20},
-  number={8},
-  pages={777--789},
-  year={1998}
-}
-
-@inproceedings{tisse2002person,
-  title={Person identification technique using human iris recognition},
-  author={Tisse, Christel-loic and Martin, Lionel and Torres, Lionel and Robert, Michel and others},
-  booktitle={Proc. Vision Interface},
-  volume={294},
-  number={299},
-  pages={294--299},
-  year={2002}
-}
-
-@inproceedings{goller2014fusing,
-  title={Fusing RFID and computer vision for probabilistic tag localization},
-  author={Goller, Michael and Feichtenhofer, Christoph and Pinz, Axel},
-  booktitle={Proc. IEEE International Conference on RFID},
-  pages={89--96},
-  year={2014}
-}
-
-@inproceedings{isasi2010location,
-  title={Location, tracking and identification with RFID and vision data fusion},
-  author={Isasi, Alberto and Rodriguez, Sergio and De Armentia, Juan Lopez and Villodas, Aritz},
-  booktitle={Proc. European Workshop on Smart Objects: Systems, Technologies and Applications},
-  pages={1--6},
-  year={2010}
-}
-
-@inproceedings{schwiegelshohn2013localization,
-  title={Localization based on fusion of rfid and stereo image data},
-  author={Schwiegelshohn, Fynn and Nick, Theresa and G{\"o}tze, J{\"u}rgen},
-  booktitle={Proc. IEEE Workshop on Positioning, Navigation and Communication (WPNC)},
-  pages={1--6},
-  year={2013}
-}
-
-@article{germa2010vision,
-  title={Vision and RFID data fusion for tracking people in crowds by a mobile robot},
-  author={Germa, Thierry and Lerasle, Fr{\'e}d{\'e}ric and Ouadah, Noureddine and Cadenat, Viviane},
-  journal={Computer Vision and Image Understanding},
-  volume={114},
-  number={6},
-  pages={641--651},
-  year={2010},
-  publisher={Elsevier}
-}
-
-@inproceedings{spinello2011people,
-  title={People detection in RGB-D data},
-  author={Spinello, Luciano and Arras, Kai O},
-  booktitle={Proc. IEEE/RSJ International Conference on Intelligent Robots and Systems},
-  pages={3838--3843},
+@inproceedings{gulwani2011flashfill,
+  title={Automating string processing in spreadsheets using input-output examples},
+  author={Gulwani, Sumit},
+  booktitle={Proc. ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL)},
+  pages={317--330},
   year={2011}
 }
 
-@article{munaro2014fast,
-  title={Fast RGB-D people tracking for service robots},
-  author={Munaro, Matteo and Menegatti, Emanuele},
-  journal={Autonomous Robots},
-  volume={37},
-  number={3},
-  pages={227--242},
-  year={2014},
-  publisher={Springer}
-}
-
-@inproceedings{yan2017online,
-  title={Online learning for human classification in 3d lidar-based tracking},
-  author={Yan, Zhi and Duckett, Tom and Bellotto, Nicola},
-  booktitle={Proc. IEEE/RSJ International Conference on Intelligent Robots and Systems},
-  pages={864--871},
-  year={2017}
-}
-
-@inproceedings{shackleton2010tracking,
-  title={Tracking people with a 360-degree lidar},
-  author={Shackleton, John and VanVoorst, Brian and Hesch, Joel},
-  booktitle={Proc. IEEE International Conference on Advanced Video and Signal Based Surveillance},
-  pages={420--426},
-  year={2010}
-}
-
-@inproceedings{kidono2011pedestrian,
-  title={Pedestrian recognition using high-definition LIDAR},
-  author={Kidono, Kiyosumi and Miyasaka, Takeo and Watanabe, Akihiro and Naito, Takashi and Miura, Jun},
-  booktitle={Proc. IEEE Intelligent Vehicles Symposium},
-  pages={405--410},
-  year={2011}
-}
-
-@inproceedings{przybyla2017detection,
-  title={Detection and tracking of 2d geometric obstacles from lrf data},
-  author={Przyby{\l}a, Mateusz},
-  booktitle={Proc. IEEE International Workshop on Robot Motion and Control},
-  pages={135--141},
-  year={2017}
-}
-
-@inproceedings{taipalus2011human,
-  title={Human detection and tracking with knee-high mobile 2D LIDAR},
-  author={Taipalus, Tapio and Ahtiainen, Juhana},
-  booktitle={Proc. IEEE International Conference on Robotics and Biomimetics},
-  pages={1672--1677},
-  year={2011}
-}
-
-@inproceedings{leigh2015person,
-  title={Person tracking and following with 2d laser scanners},
-  author={Leigh, Angus and Pineau, Joelle and Olmedo, Nicolas and Zhang, Hong},
-  booktitle={Proc. IEEE International Conference on Robotics and Automation},
-  pages={726--733},
+@inproceedings{polozov2015flashmeta,
+  title={FlashMeta: A framework for inductive program synthesis},
+  author={Polozov, Oleksandr and Gulwani, Sumit},
+  booktitle={Proc. ACM SIGPLAN International Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA)},
+  pages={107--126},
   year={2015}
 }
 
-@inproceedings{apostolof2007you,
-  title={Who Are You?-Real-time Person Identification},
-  author={Apostolof, Nicholas and Zisserman, Andrew},
-  booktitle={Proc. BMVC},
-  pages={1--10},
-  year={2007}
+@inproceedings{devlin2017robustfill,
+  title={RobustFill: Neural program learning under noisy I/O},
+  author={Devlin, Jacob and Uesato, Jonathan and Bhupatiraju, Surya and Singh, Rishabh and Mohamed, Abdel-rahman and Kohli, Pushmeet},
+  booktitle={Proc. International Conference on Machine Learning (ICML)},
+  pages={990--998},
+  year={2017}
 }
 
-@inproceedings{shoemake1985animating,
-  title={Animating rotation with quaternion curves},
-  author={Shoemake, Ken},
-  booktitle={Proc. ACM SIGGRAPH},
-  pages={245--254},
-  year={1985}
+@inproceedings{polosukhin2018neuralprogramsearch,
+  title={Neural program search: Solving programming tasks from description and examples},
+  author={Polosukhin, Illia and Skidanov, Alexander},
+  booktitle={Proc. International Conference on Learning Representations (ICLR), Workshop Track},
+  year={2018}
 }
 
-@article{hirschberg1975linear,
-  title={A linear space algorithm for computing maximal common subsequences},
-  author={Hirschberg, Daniel S},
-  journal={Communications of the ACM},
-  volume={18},
-  number={6},
-  pages={341--343},
-  year={1975},
-  publisher={ACM}
-}
-
-@article{toohey2015trajectory,
-  title={Trajectory similarity measures},
-  author={Toohey, Kevin and Duckham, Matt},
-  journal={Sigspatial Special},
+@article{cambronero2023flashfillpp,
+  title={FlashFill++: Scaling programming by example by cutting to the chase},
+  author={Cambronero, Jos{\'e} and Gulwani, Sumit and Le, Vu and Perelman, Daniel and Radhakrishna, Arjun and Simon, Clint and Tiwari, Ashish},
+  journal={Proceedings of the ACM on Programming Languages},
   volume={7},
-  number={1},
-  pages={43--50},
-  year={2015},
-  publisher={ACM}
+  number={POPL},
+  pages={952--981},
+  year={2023}
 }
 
-@inproceedings{berndt1994using,
-  title={Using dynamic time warping to find patterns in time series.},
-  author={Berndt, Donald J and Clifford, James},
-  booktitle={Proc. KDD workshop},
-  pages={359--370},
-  year={1994}
+@inproceedings{li2024pbesolved,
+  title={Is programming by example solved by LLMs?},
+  author={Li, Wen-Ding and Ellis, Kevin},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2024}
 }
 
-@article{kuhn1955hungarian,
-  title={The Hungarian method for the assignment problem},
-  author={Kuhn, Harold W},
-  journal={Naval Research Logistics Quarterly},
+@article{khan2025compositional,
+  title={LLM-guided compositional program synthesis},
+  author={Khan, Ruhma and Gulwani, Sumit and Le, Vu and Radhakrishna, Arjun and Tiwari, Ashish and Verbruggen, Gust},
+  journal={arXiv preprint arXiv:2503.15540},
+  year={2025}
+}
+
+@article{wei2025codearc,
+  title={CodeARC: Benchmarking reasoning capabilities of LLM agents for inductive program synthesis},
+  author={Wei, Anjiang and Suresh, Tarun and Cao, Jiannan and Kannan, Naveen and Wu, Yuheng and Yan, Kai and Teixeira, Thiago S. F. X. and Wang, Ke and Aiken, Alex},
+  journal={arXiv preprint arXiv:2503.23145},
+  note={Also in Proc. Conference on Language Modeling (COLM), 2025},
+  year={2025}
+}
+
+@article{fu2025firstprompt,
+  title={The first prompt counts the most! An evaluation of large language models on iterative example-based code generation},
+  author={Fu, Yingjie and Li, Bozhou and Li, Linyi and Zhang, Wentao and Xie, Tao},
+  journal={Proceedings of the ACM on Software Engineering},
   volume={2},
-  number={1-2},
-  pages={83--97},
-  year={1955},
-  publisher={Wiley Online Library}
+  number={ISSTA},
+  year={2025}
 }
 
-@inproceedings{bernardin2006multiple,
-  title={Multiple object tracking performance metrics and evaluation in a smart room environment},
-  author={Bernardin, Keni and Elbs, Alexander and Stiefelhagen, Rainer},
-  booktitle={Proc. IEEE International Workshop on Visual Surveillance, in conjunction with ECCV},
-  pages={1--8},
-  year={2006}
+@article{zhang2025pbemeetsllm,
+  title={PBE meets LLM: When few examples aren't few-shot enough},
+  author={Zhang, Shuning and Park, Yongjoo},
+  journal={arXiv preprint arXiv:2507.05403},
+  year={2025}
 }
 
-@inproceedings{teixeira2010tasking,
-  title={Tasking networked cctv cameras and mobile phones to identify and localize multiple people},
-  author={Teixeira, Thiago and Jung, Deokwoo and Savvides, Andreas},
-  booktitle={Proc. ACM International Conference on Ubiquitous Computing},
-  pages={213--222},
-  year={2010}
+@article{cummins2024codethetransforms,
+  title={Don't transform the code, code the transforms: Towards precise code rewriting using LLMs},
+  author={Cummins, Chris and Seeker, Volker and Armengol-Estap{\'e}, Jordi and Markosyan, Aram H. and Synnaeve, Gabriel and Leather, Hugh},
+  journal={arXiv preprint arXiv:2410.08806},
+  year={2024}
 }
 
-@inproceedings{parkhi2015deep,
-  title={Deep face recognition},
-  author={Parkhi, Omkar M and Vedaldi, Andrea and Zisserman, Andrew and others},
-  booktitle={Proc. British Machine Vision Conference},
-  volume={1},
-  number={3},
-  pages={6},
-  year={2015}
+% ---------------------------------------------------------------------
+% Tool making, skill libraries, amortized model computation
+% ---------------------------------------------------------------------
+
+@inproceedings{cai2024latm,
+  title={Large language models as tool makers},
+  author={Cai, Tianle and Wang, Xuezhi and Ma, Tengyu and Chen, Xinyun and Zhou, Denny},
+  booktitle={Proc. International Conference on Learning Representations (ICLR)},
+  year={2024}
 }
 
-@article{collins2000system,
-  title={中文A system for video surveillance and monitoring},
-  author={Collins, Robert T and others},
-  journal={VSAM final report},
-  pages={1--68},
-  year={2000},
-  publisher={Carnegie Mellon Univ.}
+@article{wang2024voyager,
+  title={Voyager: An open-ended embodied agent with large language models},
+  author={Wang, Guanzhi and Xie, Yuqi and Jiang, Yunfan and Mandlekar, Ajay and Xiao, Chaowei and Zhu, Yuke and Fan, Linxi and Anandkumar, Anima},
+  journal={Transactions on Machine Learning Research},
+  year={2024}
 }
 
-@article{wang2013intelligent,
-  title={Intelligent multi-camera video surveillance: A review},
-  author={Wang, Xiaogang},
-  journal={Pattern Recognition Letters},
-  volume={34},
+@inproceedings{wang2024trove,
+  title={TroVE: Inducing verifiable and efficient toolboxes for solving programmatic tasks},
+  author={Wang, Zhiruo and Fried, Daniel and Neubig, Graham},
+  booktitle={Proc. International Conference on Machine Learning (ICML)},
+  pages={51177--51191},
+  year={2024}
+}
+
+@inproceedings{yuan2024craft,
+  title={CRAFT: Customizing LLMs by creating and retrieving from specialized toolsets},
+  author={Yuan, Lifan and Chen, Yangyi and Wang, Xingyao and Fung, Yi R. and Peng, Hao and Ji, Heng},
+  booktitle={Proc. International Conference on Learning Representations (ICLR)},
+  year={2024}
+}
+
+@inproceedings{stengeleskin2024regal,
+  title={ReGAL: Refactoring programs to discover generalizable abstractions},
+  author={Stengel-Eskin, Elias and Prasad, Archiki and Bansal, Mohit},
+  booktitle={Proc. International Conference on Machine Learning (ICML)},
+  year={2024}
+}
+
+@article{kujanpaa2026toolmaking,
+  title={Tool-making and self-evolving LLM agents in low-latency systems},
+  author={Kujanp{\"a}{\"a}, Kalle and Liu, Ning and Alam, Shahnawaz and Sura, Yeshwanth Reddy and Yang, Tianyu and Klinkner, Kristina and Malmasi, Shervin},
+  journal={arXiv preprint arXiv:2607.08010},
+  year={2026}
+}
+
+% ---------------------------------------------------------------------
+% Execution-feedback synthesis and repair
+% ---------------------------------------------------------------------
+
+@inproceedings{shinn2023reflexion,
+  title={Reflexion: Language agents with verbal reinforcement learning},
+  author={Shinn, Noah and Cassano, Federico and Berman, Edward and Gopinath, Ashwin and Narasimhan, Karthik and Yao, Shunyu},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2023}
+}
+
+@inproceedings{chen2024selfdebug,
+  title={Teaching large language models to self-debug},
+  author={Chen, Xinyun and Lin, Maxwell and Sch{\"a}rli, Nathanael and Zhou, Denny},
+  booktitle={Proc. International Conference on Learning Representations (ICLR)},
+  year={2024}
+}
+
+@inproceedings{zhong2024ldb,
+  title={Debug like a human: A large language model debugger via verifying runtime execution step-by-step},
+  author={Zhong, Li and Wang, Zilong and Shang, Jingbo},
+  booktitle={Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year={2024}
+}
+
+@article{ridnik2024alphacodium,
+  title={Code generation with AlphaCodium: From prompt engineering to flow engineering},
+  author={Ridnik, Tal and Kredo, Dedy and Friedman, Itamar},
+  journal={arXiv preprint arXiv:2401.08500},
+  year={2024}
+}
+
+@inproceedings{chen2025revisitselfdebug,
+  title={Revisit self-debugging with self-generated tests for code generation},
+  author={Chen, Xiancai and Tao, Zhengwei and Zhang, Kechi and Zhou, Changzhi and Gu, Wanli and He, Yuanpeng and Zhang, Mengdi and Cai, Xunliang and Zhao, Haiyan and Jin, Zhi},
+  booktitle={Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year={2025}
+}
+
+@article{prasad2025utgen,
+  title={Learning to generate unit tests for automated debugging},
+  author={Prasad, Archiki and Stengel-Eskin, Elias and Chen, Justin Chih-Yao and Khan, Zaid and Bansal, Mohit},
+  journal={arXiv preprint arXiv:2502.01619},
+  year={2025}
+}
+
+% ---------------------------------------------------------------------
+% Spreadsheet and table manipulation with language models
+% ---------------------------------------------------------------------
+
+@inproceedings{dong2024spreadsheetllm,
+  title={Encoding spreadsheets for large language models},
+  author={Dong, Haoyu and Zhao, Jianbo and Tian, Yuzhang and Xiong, Junyu and Xia, Shiyu and Zhou, Mengyu and Lin, Yun and Cambronero, Jos{\'e} and He, Yeye and Han, Shi and Zhang, Dongmei},
+  booktitle={Proc. Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year={2024}
+}
+
+@inproceedings{zhang2025tablellm,
+  title={TableLLM: Enabling tabular data manipulation by LLMs in real office usage scenarios},
+  author={Zhang, Xiaokang and Luo, Sijia and Zhang, Bohan and Ma, Zeyao and Zhang, Jing and Li, Yang and Li, Guanlin and Yao, Zijun and Xu, Kangli and Zhou, Jinchang and others},
+  booktitle={Findings of the Association for Computational Linguistics: ACL},
+  year={2025}
+}
+
+@inproceedings{li2023sheetcopilot,
+  title={SheetCopilot: Bringing software productivity to the next level through large language models},
+  author={Li, Hongxin and Su, Jingran and Chen, Yuntao and Li, Qing and Zhang, Zhaoxiang},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2023}
+}
+
+@article{cheng2025sheetmind,
+  title={SheetMind: An end-to-end LLM-powered multi-agent framework for spreadsheet automation},
+  author={Cheng, Xi and Zhu, Ruiyan and Liu, Ke and Machineni, Rakesh Chowdary and Chen, Lyuhao and Zhu, Brian and Jin, Daniel and Qi, Zheng and Parihar, Neeraj and Xu, Zhoutian and Gao, Oliver},
+  journal={arXiv preprint arXiv:2506.12339},
+  year={2025}
+}
+
+@inproceedings{zhao2024nl2formula,
+  title={NL2Formula: Generating spreadsheet formulas from natural language queries},
+  author={Zhao, Wei and Hou, Zhitao and Wu, Siyuan and Gao, Yan and Dong, Haoyu and Wan, Yao and Zhang, Hongyu and Sui, Yulei and Zhang, Haidong},
+  booktitle={Findings of the Association for Computational Linguistics: EACL},
+  year={2024}
+}
+
+@inproceedings{ma2024spreadsheetbench,
+  title={SpreadsheetBench: Towards challenging real world spreadsheet manipulation},
+  author={Ma, Zeyao and Zhang, Bohan and Zhang, Jing and Yu, Jifan and Zhang, Xiaokang and Zhang, Xiaohan and Luo, Sijia and Wang, Xi and Tang, Jie},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2024}
+}
+
+% ---------------------------------------------------------------------
+% Document intelligence: reading, and the beginnings of writing
+% ---------------------------------------------------------------------
+
+@inproceedings{xu2020layoutlm,
+  title={LayoutLM: Pre-training of text and layout for document image understanding},
+  author={Xu, Yiheng and Li, Minghao and Cui, Lei and Huang, Shaohan and Wei, Furu and Zhou, Ming},
+  booktitle={Proc. ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  pages={1192--1200},
+  year={2020}
+}
+
+@inproceedings{kim2022donut,
+  title={OCR-free document understanding transformer},
+  author={Kim, Geewook and Hong, Teakgyu and Yim, Moonbin and Nam, Jeongyeon and Park, Jinyoung and Yim, Jinyeong and Hwang, Wonseok and Yun, Sangdoo and Han, Dongyoon and Park, Seunghyun},
+  booktitle={Proc. European Conference on Computer Vision (ECCV)},
+  pages={498--517},
+  year={2022}
+}
+
+@inproceedings{wang2024docllm,
+  title={DocLLM: A layout-aware generative language model for multimodal document understanding},
+  author={Wang, Dongsheng and Raman, Natraj and Sibue, Mathieu and Ma, Zhiqiang and Babkin, Petr and Kaur, Simerjot and Pei, Yulong and Nourbakhsh, Armineh and Liu, Xiaomo},
+  booktitle={Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year={2024}
+}
+
+@inproceedings{suri2024doceditv2,
+  title={DocEdit-v2: Document structure editing via multimodal LLM grounding},
+  author={Suri, Manan and Mathur, Puneet and Dernoncourt, Franck and Jain, Rajiv and Morariu, Vlad I. and Sawhney, Ramit and Nakov, Preslav and Manocha, Dinesh},
+  booktitle={Proc. Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year={2024}
+}
+
+% ---------------------------------------------------------------------
+% Document intermediate representations and layout preservation
+% ---------------------------------------------------------------------
+
+@article{yang2026babeldoc,
+  title={BabelDOC: Better layout-preserving PDF translation via intermediate representation},
+  author={Yang, Qi and Ma, Xiangyao and Wang, Xiao and Wang, Hao and Wang, Rui},
+  journal={arXiv preprint arXiv:2605.10845},
+  note={ACL 2026 System Demonstration paper},
+  year={2026}
+}
+
+@article{cachola2024templaticviews,
+  title={Knowledge-centric templatic views of documents},
+  author={Cachola, Isabel and Cucerzan, Silviu and Herring, Allen and Mijovic, Vuksan and Oveson, Erik and Jauhar, Sujay Kumar},
+  journal={arXiv preprint arXiv:2401.06945},
+  year={2024}
+}
+
+@inproceedings{musumeci2024semantictemplates,
+  title={LLM based multi-agent generation of semi-structured documents from semantic templates in the public administration domain},
+  author={Musumeci, Emanuele and Brienza, Michele and Suriani, Vincenzo and Nardi, Daniele and Bloisi, Domenico Daniele},
+  booktitle={Proc. International Conference on Human-Computer Interaction (HCII)},
+  year={2024}
+}
+
+% ---------------------------------------------------------------------
+% Robotic process automation, office and GUI agents
+% ---------------------------------------------------------------------
+
+@article{wewerka2020rpa,
+  title={Robotic process automation --- A systematic literature review and assessment framework},
+  author={Wewerka, Judith and Reichert, Manfred},
+  journal={arXiv preprint arXiv:2012.11951},
+  year={2020}
+}
+
+@article{ye2023proagent,
+  title={ProAgent: From robotic process automation to agentic process automation},
+  author={Ye, Yining and Cong, Xin and Tian, Shizuo and Cao, Jiannan and Wang, Hao and Qin, Yujia and Lu, Yaxi and Yu, Heyang and Wang, Huadong and Lin, Yankai and Liu, Zhiyuan and Sun, Maosong},
+  journal={arXiv preprint arXiv:2311.10751},
+  year={2023}
+}
+
+@article{huang2025prompt2task,
+  title={Prompt2Task: Automating UI tasks on smartphones from textual prompts},
+  author={Huang, Tian and Yu, Chun and Shi, Weinan and Peng, Zijian and Yang, David and Sun, Weiqi and Shi, Yuanchun},
+  journal={ACM Transactions on Computer-Human Interaction},
+  year={2025}
+}
+
+@inproceedings{xie2024osworld,
+  title={OSWorld: Benchmarking multimodal agents for open-ended tasks in real computer environments},
+  author={Xie, Tianbao and Zhang, Danyang and Chen, Jixuan and Li, Xiaochuan and Zhao, Siheng and Cao, Ruisheng and Hua, Toh Jing and Cheng, Zhoujun and Shin, Dongchan and Lei, Fangyu and others},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2024}
+}
+
+@article{zhao2025worldgui,
+  title={WorldGUI: An interactive benchmark for desktop GUI automation from any starting point},
+  author={Zhao, Henry Hengyuan and Yang, Kaiming and Yu, Wendi and Gao, Difei and Shou, Mike Zheng},
+  journal={arXiv preprint arXiv:2502.08047},
+  year={2025}
+}
+
+@article{lv2026mindthegap,
+  title={Mind the gap: Can frontier LLMs pass a standardized office proficiency exam?},
+  author={Lv, Tengchao and Zhang, Dongdong and Ding, Jiayu and Jia, Yilin and Zhao, Yuzhong and Huang, Yupan and Wu, Wenshan and Zhou, Xiangyang and Huang, Shaohan and Yang, Nan and Dong, Li and Cui, Lei and Wei, Furu},
+  journal={arXiv preprint arXiv:2606.10956},
+  year={2026}
+}
+
+% ---------------------------------------------------------------------
+% Verification, guardrails and the oracle problem
+% ---------------------------------------------------------------------
+
+@inproceedings{scholak2021picard,
+  title={PICARD: Parsing incrementally for constrained auto-regressive decoding from language models},
+  author={Scholak, Torsten and Schucher, Nathan and Bahdanau, Dzmitry},
+  booktitle={Proc. Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  pages={9895--9901},
+  year={2021}
+}
+
+@inproceedings{claessen2000quickcheck,
+  title={QuickCheck: A lightweight tool for random testing of Haskell programs},
+  author={Claessen, Koen and Hughes, John},
+  booktitle={Proc. ACM SIGPLAN International Conference on Functional Programming (ICFP)},
+  pages={268--279},
+  year={2000}
+}
+
+@article{chen2018metamorphic,
+  title={Metamorphic testing: A review of challenges and opportunities},
+  author={Chen, Tsong Yueh and Kuo, Fei-Ching and Liu, Huai and Poon, Pak-Lok and Towey, Dave and Tse, T. H. and Zhou, Zhi Quan},
+  journal={ACM Computing Surveys},
+  volume={51},
   number={1},
-  pages={3--19},
-  year={2013}
+  pages={4:1--4:27},
+  year={2018}
 }
 
-@article{harrap2010overview,
-  title={An overview of LIDAR: collection to application},
-  author={Harrap, Rob and Lato, Matt},
-  journal={Norway},
-  year={2010}
+@article{li2025judgerobustness,
+  title={LLMs cannot reliably judge (yet?): A comprehensive assessment on the robustness of LLM-as-a-judge},
+  author={Li, Songze and Xu, Chuokun and Wang, Jiaying and Gong, Xueluan and Chen, Chen and Zhang, Jirui and Wang, Jun and Lam, Kwok-Yan and Ji, Shouling},
+  journal={arXiv preprint arXiv:2506.09443},
+  year={2025}
 }
 
-@article{stanislaw1999calculation,
-  title={Calculation of signal detection theory measures},
-  author={Stanislaw, Harold and Todorov, Natasha},
-  journal={Behavior Research Methods, Instruments,  Computers},
-  volume={31},
-  number={1},
-  pages={137--149},
-  year={1999}
+@article{wataoka2024selfpreference,
+  title={Self-preference bias in LLM-as-a-judge},
+  author={Wataoka, Koki and Takahashi, Tsubasa and Ri, Ryokan},
+  journal={arXiv preprint arXiv:2410.21819},
+  year={2024}
+}
+
+@inproceedings{tan2025judgebench,
+  title={JudgeBench: A benchmark for evaluating LLM-based judges},
+  author={Tan, Sijun and Zhuang, Siyuan and Montgomery, Kyle and Tang, William Y. and Cuadron, Alejandro and Wang, Chenguang and Popa, Raluca Ada and Stoica, Ion},
+  booktitle={Proc. International Conference on Learning Representations (ICLR)},
+  year={2025}
+}
+
+% ---------------------------------------------------------------------
+% Cost-aware and reliability-aware agent evaluation
+% ---------------------------------------------------------------------
+
+@article{erol2025costofpass,
+  title={Cost-of-pass: An economic framework for evaluating language models},
+  author={Erol, Mehmet Hamza and El, Batu and Suzgun, Mirac and Yuksekgonul, Mert and Zou, James},
+  journal={arXiv preprint arXiv:2504.13359},
+  year={2025}
+}
+
+@inproceedings{kim2026dynamicreasoning,
+  title={The cost of dynamic reasoning: Demystifying AI agents and test-time scaling from an AI infrastructure perspective},
+  author={Kim, Jiin and Shin, Byeongjun and Chung, Jinha and Rhu, Minsoo},
+  booktitle={Proc. IEEE International Symposium on High-Performance Computer Architecture (HPCA)},
+  year={2026}
+}
+
+@inproceedings{yao2025taubench,
+  title={$\tau$-bench: A benchmark for tool-agent-user interaction in real-world domains},
+  author={Yao, Shunyu and Shinn, Noah and Razavi, Pedram and Narasimhan, Karthik},
+  booktitle={Proc. International Conference on Learning Representations (ICLR)},
+  year={2025}
+}
+
+@article{ma2026maestro,
+  title={MAESTRO: Multi-agent evaluation suite for testing, reliability, and observability},
+  author={Ma, Tie and Chen, Yixi and Anand, Vaastav and Cornacchia, Alessandro and Faustino, Am{\^a}ndio R. and Liu, Guanheng and Zhang, Shan and Luo, Hongbin and Fahmy, Suhaib A. and Qazi, Zafar A. and Canini, Marco},
+  journal={arXiv preprint arXiv:2601.00481},
+  year={2026}
+}
+
+@article{rabanser2026reliability,
+  title={Towards a science of AI agent reliability},
+  author={Rabanser, Stephan and Kapoor, Sayash and Kirgis, Peter and Liu, Kangheng and Utpala, Saiteja and Narayanan, Arvind},
+  journal={arXiv preprint arXiv:2602.16666},
+  note={Accepted at ICML 2026},
+  year={2026}
+}
+
+@article{laban2026delegate,
+  title={LLMs corrupt your documents when you delegate},
+  author={Laban, Philippe and Schnabel, Tobias and Neville, Jennifer},
+  journal={arXiv preprint arXiv:2604.15597},
+  year={2026}
 }

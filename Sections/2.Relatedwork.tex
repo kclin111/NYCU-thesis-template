@@ -6,88 +6,840 @@
 % 骨架來源：docs/thesis/thesis-outline.md §2（background）+ §11（related work）
 % 兩者合併成樣板原本的第 2 章。前四節是背景與問題刻畫，後七節是文獻。
 %
-% 相依：docs/thesis/related-work-v1-thought.md（已離線審完）
+% 相依：docs/thesis/related-work-v1-thought.md（敘述草稿）
+%       docs/thesis/refs/manifest.md（**書目權威**：DBLP 場所欄 + 逐筆查證紀錄）
+%       docs/thesis/refs/abs/*.md（每篇的 verbatim 摘要）
+%       docs/thesis/refs/pdf/*.pdf（六篇 2026 的 Tier A 全文）
 %
-% 【使用該產出前必讀】它的「已驗證」實際只等於「連結打得開」：
-%   - 至少 12 篇有同儕審查場所的論文被標成 arXiv preprint（場所欄要用 DBLP 重掃）
-%   - 六篇 2026 的論文無法離線核對，其中 arXiv 2607.08010（Amazon tool-making）
-%     一篇獨力推翻桶 1 的 gap，核對完成前不得據此改任何內容
-%   - 桶 3（LLM + PBE）時間軸停在 2023，2024–2026 全空白，這是唯一非補不可的洞
+% 【2026-08-23 動筆註：骨架原本的三條風險註記全部已過期，逐條記在下面】
+%
+% (1) 原註記：「至少 12 篇有同儕審查場所的論文被標成 arXiv preprint，場所欄要用
+%     DBLP 重掃」。實測：manifest.md 已經做完那次重掃，而**實際數字是 26 篇**
+%     （48 筆 Tier A/B 中 venue_match=differs 共 26），不是 12。骨架低估了兩倍多。
+%     另有兩筆是 **title** 不符（WorldGUI 改標題、PromptRPA 改名 Prompt2Task 並登
+%     ACM TOCHI），那是骨架完全沒有預料到的一類。ref.bib 一律採 DBLP 場所。
+%
+% (2) 原註記：「六篇 2026 的論文無法離線核對，其中 arXiv 2607.08010 一篇獨力推翻
+%     桶 1 的 gap，核對完成前不得據此改任何內容」。實測：六篇全部已核對，PDF 存在
+%     refs/pdf/，Kujanpää 等人那篇連「runtime 仍有 LLM agent ＋ code-generation
+%     fallback」都有逐字引文（refs/abs/b1-toolmaking.md，PDF p.1、p.3、p.6）。
+%     §1.3.1 那句前向引用因此是可引用的，本章 §2.8 落引用。
+%
+% (3) 原註記：「桶 3（LLM + PBE）時間軸停在 2023，2024–2026 全空白，這是唯一非補
+%     不可的洞」。實測：refs/candidates/ 已有 8 篇 2024–2025 的 Tier D 候選，洞已補。
+%
+% 【骨架另有兩處資料錯誤，動筆時已更正，理由見 §2.3 與 §2.7 的正文】
+%     - §2.3 原註記把 negative obligation 標成「來自 benchmark S5」；**S5 不存在**
+%       （benchmark/ 只有 S3、S4、X1）。真正的來源是 X1／13020D 的 R05／R14／R26／R27
+%       與 ADR 0011。
+%     - §2.7 原註記把範圍聚合標成「（S3）」；S3 是被使用者以「很不真實、很醜」否決的
+%       合成 pilot，不在評測集內。可引用的例子是 S4 的跨檔明細表與 X1 的兩個獨立宣稱量。
+%
+% 【體例】每一節末尾強制有 "Status:" 段，沿用第 3／4／5／1 章：一個主張要嘛
+% implementation-backed（指名檔案／函式／測試／實測數字），要嘛 normative（明說尚未
+% 實證並揭露偏誤方向）。本章多一條：每一個 gap 宣稱都要標明它是「已核對到該文獻沒做」
+% 還是「未核對」——把「別人沒做」寫成 gap 而沒有查證那句話，是本章特有的風險。
 % =====================================================================
+
+The survey behind this chapter produced one uncomfortable result, and the honest thing to do
+is to put it first. Of the five gaps this work originally claimed --- amortizing model
+computation into reusable artifacts, repairing generated programs from execution feedback,
+verifying generated output against oracles, versioning and auditing what a model produced,
+and evaluating agents for cost rather than accuracy alone --- every one already has an
+occupant, and in four of the five cases the occupant is stronger than the version this thesis
+would have claimed. A related-work chapter whose function is to report that nobody has done
+any of these things would be false. This chapter therefore does something else: it locates
+each component in its own literature, states as narrowly as possible what remains, and marks
+each remaining claim by whether the negative half of it was actually checked.
+
+\begin{table}[htbp]
+\centering
+\caption{The five originally claimed gaps, the work that occupies each, and where this
+chapter discharges it.}
+\label{tab:rel:occupied}
+\begin{tabular}{p{0.26\linewidth}p{0.36\linewidth}p{0.28\linewidth}}
+\hline
+\textbf{Originally claimed} & \textbf{Already occupied by} & \textbf{Discharged in} \\
+\hline
+Amortizing model computation into reusable artifacts & Tool making and library learning
+\cite{cai2024latm,wang2024voyager,wang2024trove,yuan2024craft,stengeleskin2024regal}, and an
+industrial deployment \cite{kujanpaa2026toolmaking} & Section~\ref{sec:rel:toolmaking} \\
+Repairing generated programs from execution feedback & Execution-guided synthesis and
+self-debugging \cite{shinn2023reflexion,chen2024selfdebug,zhong2024ldb,ridnik2024alphacodium}
+& Section~\ref{sec:rel:repair} \\
+Verifying generated output before reuse & Validation before abstraction
+\cite{yuan2024craft,wang2024trove}; automated oracle construction
+\cite{prasad2025utgen,chen2025revisitselfdebug} & Sections~\ref{sec:rel:repair}
+and~\ref{sec:rel:verification} \\
+Versioning and auditing generated artifacts & Versioned tools with invocation logs and drift
+monitoring \cite{kujanpaa2026toolmaking} & Sections~\ref{sec:rel:governance}
+and~\ref{sec:rel:toolmaking} \\
+Cost- and variance-aware agent evaluation & A fast-growing evaluation literature
+\cite{erol2025costofpass,kim2026dynamicreasoning,yao2025taubench,ma2026maestro,rabanser2026reliability}
+& Section~\ref{sec:rel:evaluation} \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Scope of the survey, and what ``verified'' means here.}
+The survey records 56 works in \texttt{docs/thesis/refs/manifest.md}, of which 54 are cited
+here, with, for each,
+the metadata claimed by the survey draft, the metadata fetched from the publisher or preprint
+page, and the venue as DBLP records it. Two facts about that reconciliation matter for how
+this chapter should be read. First, the survey draft labelled 26 of the 48 primary works
+``arXiv preprint'' where DBLP records a peer-reviewed venue, and named a title that the cited
+identifier no longer carries in two further cases; the bibliography follows DBLP rather than
+the draft. Second, six works dated 2026 bear a disproportionate share of the argument, and
+for those six the full text was retrieved and the load-bearing sentences copied verbatim into
+\texttt{docs/thesis/refs/abs/}, because they are the works most likely to be
+misremembered in the direction that flatters this thesis. Where this chapter asserts that some
+line of work does \emph{not} do something, that assertion was checked against that set
+and no further; the wording says so each time, and a gap that was not checked is labelled as
+unchecked rather than quietly asserted.
 
 \section{Template-Shaped Tasks}
 \label{sec:rel:tasks}
 
-% TODO 任務定義：給定模板 T 與一組值 V，產生實例 D = f(T, V)。
-%      難點在 f 的定位（locator）部分：哪一個儲存格／bookmark／文字對應哪一個語意欄位。
+The task class this thesis addresses can be stated in one line. A \emph{template} $T$ is a
+native office artifact --- a \texttt{.docx}, \texttt{.xlsx} or \texttt{.dwg} file --- whose
+layout, static text and structural anchors are fixed. An \emph{instance} is produced by
+combining $T$ with a set of values $V$ drawn from structured source data, yielding
+$D = f(T, V)$. Chapter~\ref{ch:architecture} gives the formal version; what matters here is
+where the difficulty lives, because the literature reviewed below is organized by which part
+of $f$ each line of work attacks.
+
+The arithmetic in $f$ is rarely hard. In the two evaluation datasets of this thesis it is
+multiplication, division by a unit constant, rounding, summation over a row range, and equality
+joins between two tables. What is hard is the other half of $f$: deciding \emph{which}
+structural location in $T$ receives \emph{which} semantic field. A spreadsheet cell has no
+name; a paragraph in a form has no identifier; a blank underline after a Chinese label is, in
+the file's own data model, indistinguishable from any other run of whitespace. The binding
+between ``port of loading'' and a particular paragraph, or between ``this month's audit count''
+and column F of row 8, is nowhere in the file. It has to be inferred, and once inferred it has
+to survive the next revision of the form. This is the reason the thesis calls its central
+mechanism a \emph{locator} rather than a mapping, and the reason
+Section~\ref{sec:rel:failures} lists locator drift as a first-class failure mode rather than as
+an implementation detail.
+
+Three further properties delimit the class, and they are stated as an admission test in
+Section~\ref{sec:design:scope} rather than as a description: the task must \emph{recur} over
+many instances of one template revision; its outputs must be \emph{deterministically
+derivable} from structured source data without professional judgement; and its mapping must
+already be written down as \emph{explicit operational rules}. The third property is what
+distinguishes this class from document generation in general, and it is also what makes the
+class auditable: if a rules document exists, then coverage of that document is a measurable
+quantity, which Section~\ref{sec:der:coverage} exploits and which, as far as this survey
+checked, no reviewed system treats as an obligation.
+
+The closest work in subject matter is a multi-agent system that generates semi-structured
+public-administration documents from semantic templates, combining retrieval, prompting and
+several cooperating agents \cite{musumeci2024semantictemplates}. Its material is very close to
+the government-form benchmark of this thesis, which is a reason to cite it early rather than
+defensively. Its ``semantic template'' is nonetheless an input to prompting, and the document
+is produced by the agents at the moment it is requested; nothing persists afterwards that could
+produce the next instance without them.
+
+None of the reviewed literature adopts the template family as its unit of evaluation. The
+spreadsheet and office benchmarks evaluate one instruction against one workbook, or one
+instruction against several workbooks
+\cite{ma2024spreadsheetbench,lv2026mindthegap,li2023sheetcopilot}; the computer-use benchmarks
+evaluate one task in one environment \cite{xie2024osworld,zhao2025worldgui}; the
+programming-by-example literature evaluates one transformation learned from its own examples
+\cite{gulwani2011flashfill,cambronero2023flashfillpp}. This is an observation about evaluation
+units, not a deficiency claim: nothing prevents those benchmarks from being extended, and the
+reason this thesis needs a different unit is that the quantity it wants to report --- one
+derivation cost amortized over $N$ deterministic executions --- is undefined unless the family,
+rather than the instance, is the unit.
+
+\paragraph{Status: the task definition is normative; its instantiation is
+implementation-backed.}
+The three admission conditions are a design decision of this thesis, not a finding, and no
+experiment here varies them; Section~\ref{sec:design:scope} states them with an operational
+test each so that a reader can at least apply them. That the class is non-empty and contains
+real forms is implementation-backed: the DOCX dataset is built from a commercial
+invoice and packing list published by a freight forwarder, and the XLSX dataset from a
+Directorate-General of Highways monthly site-audit report, each with ten instances, both under
+\texttt{benchmark/}. The premise that such templates are instantiated tens to thousands of
+times in practice is \emph{not} measured anywhere in this thesis --- the datasets carry ten
+instances each because that is how many were constructed --- and the bias direction is
+favourable to the method, since recurrence is precisely the condition under which a one-off
+derivation amortizes. Section~\ref{sec:intro:motivation} discloses the same premise on the same
+terms.
 
 \section{Document Formats and Representation Mismatch}
 \label{sec:rel:formats}
 
-% TODO docx / xlsx 的資料模型：bookmark、content control、具名範圍、合併儲存格、
-%      公式 vs 快取值。以及 DWG 的 entity graph、layer、block/attribute、xdata。
-% TODO 表徵不匹配：語意存在於佈局關係，序列化成 token 會摧毀這些結構。
-%      【降階處理】這是動機的一部分但不能當主論點，會被一句「下一代模型就解決了」擊破。
-%      正確的推論是：用工具提供結構化 dump，並且只在編譯期讀一次。
+The carriers of this thesis have data models with far more structure than their rendered
+appearance suggests. An Office Open XML word-processing document carries bookmarks, content
+controls with stable tags, table grids, and paragraph and run boundaries that split a visually
+continuous sentence into arbitrarily many fragments. A spreadsheet carries defined names,
+merged ranges whose value lives only in the anchor cell, number formats that are presentation
+rather than content, and formulas alongside cached values that may disagree. A drawing carries
+an entity graph with layers, block references with attributes, and extension data attached to
+entities. In all three, a substantial part of the meaning is positional: this cell is the
+current-month column because it sits under a header two rows up; that paragraph is the
+consignee because it follows a label.
+
+Serializing such an artifact into a token sequence destroys exactly that positional
+information, and a body of work exists precisely to mitigate the loss. SpreadsheetLLM
+compresses large sheets while preserving cell addresses, values, formats and structural
+anchors, and evaluates table detection and spreadsheet question answering on the result
+\cite{dong2024spreadsheetllm}. LayoutLM jointly models text and two-dimensional layout for form
+understanding \cite{xu2020layoutlm}; Donut removes the external optical-character-recognition
+stage and decodes structured information directly from a document image \cite{kim2022donut}; and
+DocLLM folds bounding-box layout into the attention mechanism itself
+\cite{wang2024docllm}.
+
+This thesis therefore \emph{demotes} representation mismatch from an argument to an
+observation, deliberately and at some cost to the rhetorical force of the motivation. An
+argument of the form ``models cannot read this format'' is answered by the next model, and the
+works just cited are the evidence that it is being answered steadily. The inference this thesis
+draws instead concerns \emph{where} the reading happens: supply the structure through tools
+that produce a faithful dump of the artifact, and read that dump \emph{once}, at compile time,
+rather than once per instance. Section~\ref{sec:design:dump} describes the dump; the design
+consequence is that improvements in a model's native ability to read a spreadsheet make the
+derivation step cheaper without changing the architecture, whereas they do nothing at all for
+an architecture that re-reads the artifact on every instance.
+
+A separate line of work has begun to treat the intermediate representation itself as the
+object of study, and it is the most direct threat to any novelty claim this thesis might make
+about representing documents. Knowledge-centric templatic views treat a slide deck, a
+newsletter, a report and a poster as different templatic views of one underlying body of
+knowledge, and find that inserting a structured intermediate representation improves generation
+\cite{cachola2024templaticviews}. BabelDOC goes further for a concrete transformation class: it
+decouples visual layout metadata from semantic content in an explicit intermediate
+representation, performs document-level translation operations against the semantic side, and
+then re-anchors the translated content onto the original layout through an adaptive typesetting
+engine \cite{yang2026babeldoc}. Proposing a document intermediate representation in order to
+preserve layout is therefore not novel, and this thesis does not claim it is.
+
+The difference is what the representation is \emph{for}. BabelDOC's representation describes the
+document, so that the document can be reconstructed after its content is replaced; its
+transformation class is fixed in advance and its semantic content is still model-generated at
+the time of use. The representation here describes \emph{behaviour}: for each output field, which
+source value feeds it, which transformation is applied, how far a range extends, what the
+rendered format must be, which locations must be left untouched, and which validation
+obligations were discharged before the representation was allowed to execute. It is closer to a
+compiled program with a provenance record than to a document model, and
+Section~ef{sec:design:ir} is where that distinction is made precise. Stated negatively: if
+this thesis's representation were only a coordinate plus a value, the comparison with a layout
+intermediate representation would be unfavourable to it.
+
+One part of the mismatch is not a comprehension problem and is worth separating, because no
+model improvement touches it. Writing into a native artifact through a general-purpose library
+can silently discard parts of the package that the library does not model. Measured on the
+XLSX evaluation template, a single load-and-save round trip through the spreadsheet library
+used here drops \texttt{xl/drawings} and \texttt{xl/printerSettings} --- the drawing objects and
+the print configuration --- and the file that results opens without complaint. That is a
+property of the writer, not of the reader, and it is the reason the production write path was
+changed to package-preserving editing (Section~\ref{sec:design:targets}). A better model does
+not recover a part that the writer never wrote.
+
+\paragraph{Status: the format characterization is implementation-backed; the demotion is a
+positioning decision.}
+The structural claims about the carriers are backed by the dumps and fingerprints measured on
+the two real evaluation templates and reported in Table~\ref{tab:design:fingerprint} --- 27
+content-bearing references for the XLSX template and 92 for the DOCX template --- rather than
+on constructed fixtures. The preservation measurement is implementation-backed by the
+package-preserving writer and its post-condition test, which replaces the writer with a plain
+library save and asserts that parts are then lost. The demotion of representation mismatch to
+an observation is normative: this thesis runs no experiment comparing model comprehension of
+raw versus dumped artifacts, and Section~\ref{sec:intro:motivation} makes the same demotion for
+the same reason. The bias direction of the demotion is \emph{unfavourable} to the method, since
+it gives up the easiest available motivation.
 
 \section{Failure Modes}
 \label{sec:rel:failures}
 
-% TODO 本節是後面 oracle 與 gate 設計的依據，第 3/4 章要有一張對照表回指這裡：
-%      - 沉默失敗（值錯、位置對）
-%      - 定位漂移（模板改版後 locator 指到別的地方）
-%      - 覆蓋不足（欄位根本沒被規格涵蓋 -> 保持模板預設值，最難察覺）
-%      - 格式／單位錯誤
-%      - negative obligation 違反（該空的沒清空）—— 新增，來自 benchmark S5
-%      - 範圍外延錯誤（聚合多算或少算一列，數字有理有據但錯）—— 新增，來自 ADR 0002
+This section fixes the vocabulary that the rest of the thesis argues over.
+Table~\ref{tab:design:blocks} maps these six modes onto the mechanisms intended to make each
+one loud, and Section~\ref{sec:design:failloud} states the creed over them. The ordering is by
+how hard the mode is to observe, not by how often it occurs.
+
+\begin{enumerate}
+  \item \textbf{Wrong value, right place.} The document is structurally perfect, every field
+    is populated, the layout is untouched, and one number is wrong. This is the thesis's
+    primary risk measure, and it is the mode that defeats inspection, because nothing in the
+    delivery path distinguishes such a document from a correct one. The nearest measurement in
+    the literature is DELEGATE-52, which simulates long delegated editing workflows across 52
+    professional domains and reports that frontier models lose an average of 25\% of document
+    content over 20 delegated interactions, with errors characterized as sparse but severe and
+    as silently corrupting \cite{laban2026delegate}. That figure is a degradation of a
+    domain-specific reconstruction-similarity score, not a count of corrupted documents or
+    edits, and is cited here for the shape of the failure rather than for its magnitude.
+  \item \textbf{Locator drift.} A template is revised, a row is inserted, and a locator that
+    was correct now addresses a neighbouring cell. Every value it writes is well-formed. The
+    closest analogue in the reviewed literature is WorldGUI, which tests desktop automation
+    from varying initial states and finds planning brittle under that variation
+    \cite{zhao2025worldgui}. The architectural response differs: WorldGUI's agent reasons around
+    the variation at run time, whereas this work compiles the tolerable variation into the
+    locator and requires the intolerable variation to fail loudly
+    (Section~\ref{sec:design:drift}).
+  \item \textbf{Coverage shortfall.} A field that no rule reaches is never written, so the
+    template's own default survives into the delivered document. This is harder to see than a
+    wrong value, because there is no wrong value: there is an empty cell that looks like an
+    empty cell. Detecting it requires knowing what the rules \emph{obliged} the specification
+    to produce, which requires an external denominator (Section~\ref{sec:der:coverage}).
+    Across the surveyed set, none treats the coverage of an authoritative rules document
+    as an obligation to be measured; the nearest is qualification against labelled historical
+    cases \cite{kujanpaa2026toolmaking}, which measures agreement on the cases that exist
+    rather than coverage of the rules that apply.
+  \item \textbf{Format and unit error.} The value is right and its rendering is wrong: a
+    thousands separator in a customs field, a spreadsheet number format leaking into printed
+    text, grams reported where kilograms were required, a rounding mode that differs from the
+    one the rules specify. This mode is emphatically not a gap in the literature. Mind the Gap
+    grades 200 Office tasks against 7,118 machine-gradable criteria and shows that fine-grained
+    checking of Word, Excel and PowerPoint artifacts is entirely feasible
+    \cite{lv2026mindthegap}, so ``office artifacts admit no machine-checkable oracle'' is not
+    available as a claim.
+  \item \textbf{Negative-obligation violation.} A location that the rules require to remain
+    blank is written to. The obligation is real and is stated in the rules of the XLSX dataset
+    in four places --- unused detail slots must stay empty, the remarks column must be left
+    blank unless a condition holds, prior-period figures must not be carried forward, and the
+    signature block must not be pre-filled --- and it is structurally invisible to any check
+    that compares only the values that were written. Nothing in the surveyed literature treats
+    ``I am responsible for this location and I discharge that responsibility by writing
+    nothing'' as an expressible obligation.
+  \item \textbf{Extent error.} An aggregate covers one row too many or too few. The result is
+    a number with a plausible derivation and a wrong value. This mode supplies the strongest
+    single argument in the thesis for oracles over inspection: of the six wrong-extent
+    hypotheses instantiated on the DOCX dataset, four produce six identical totals, because the
+    rows they wrongly include carry an empty quantity column. The only observable difference is
+    that one more detail slot has been consumed --- which no total, and no reconciliation of
+    totals, can see.
+\end{enumerate}
+
+Three of the six are not locator problems at all, which is the reason
+Chapter~\ref{ch:architecture} does not present locators as the whole method.
+
+\paragraph{Status: five of six modes have a measured instance in this repository; two gap
+claims are scoped to the surveyed set.}
+Mode 1 has two measured specimens: three of 79 detail rows in the DOCX dataset changed value
+when decimal rounding replaced binary rounding, one of them inside an evaluation instance; and
+an offline execution of a real specification over five XLSX instances scored 347 of 350
+semantic checks with three failures classified \texttt{silent\_failure}. Mode 2 is measured as
+fingerprint sensitivity on both real templates (Table~\ref{tab:design:fingerprint}). Mode 3 is
+measured as the coverage denominator over the two rule documents. Mode 5 has a measured
+instance in the same execution probe, where the three failures were the remarks column. Mode 6
+is measured as the six wrong-extent hypotheses in the dataset's own annotation. Mode 4 is
+\emph{not} independently measured: only the rounding function has been audited for decimal
+semantics, and the rest of the format channel is asserted from the scoring policy rather than
+demonstrated. The assertions that modes 3 and 5 have no analogue are checked against the 54
+surveyed works only, and are stated as such rather than as claims about the literature at
+large.
 
 \section{Governance Requirements}
 \label{sec:rel:governance}
 
-% TODO 可重現、可稽核、可簽核、可回溯。這是純 agent 方案的結構性障礙。
-% 【措辭修正】不要寫「法規普遍要求 deterministic output」——找不到學術來源。
-%      改寫成 traceability / reproducibility / change control。
+The governance argument of this thesis is stated in exactly three words, and the reason for
+that restraint is a negative result of the survey. A tempting formulation --- that regulated or
+audited workflows \emph{require} deterministic output --- was looked for and not found: no
+academic source in the surveyed set supports a generalization of that shape, and this thesis
+therefore does not make it. Section~\ref{sec:design:audit} states the same restriction from the
+implementation side. What is claimed instead is that such workflows value three properties:
+
+\begin{itemize}
+  \item \textbf{Traceability.} For any delivered value, one can say which rule produced it and
+    which source datum it came from.
+  \item \textbf{Reproducibility.} The same inputs yield the same artifact, bit for bit, on a
+    later date and a different machine.
+  \item \textbf{Change control.} A change in behaviour is a reviewable diff against a
+    previous, immutable version.
+\end{itemize}
+
+That these three have operational value is supported by industrial rather than regulatory
+evidence, and the strongest available witness is also this thesis's closest neighbour. In the
+deployment reported by Kujanpää et al., every tool invocation logs the tool version, its
+inputs and its outputs; a monitoring agent reviews those logs in batch; and the authors report
+that versioning improves auditability and exposes both specification gaps and upstream data
+drift \cite{kujanpaa2026toolmaking}. That is evidence for the value of versioning in
+production, and it is explicitly not a regulatory basis.
+
+The structural difficulty for a per-instance agent is that it supplies none of the three, and
+not because it is careless. There is no versioned program to trace, since the behaviour existed
+only inside one inference; no compiled artifact to hash, since the next run may legitimately
+differ; and no diff to review, since there is nothing that persists between runs to diff
+against. A transcript is a record of what happened, which is a weaker object than a
+specification of what will happen. This is the sense in which the governance argument is
+architectural rather than a criticism of model quality, and it is unaffected by improvements in
+model quality.
+
+\paragraph{Status: the requirement is normative in three words; the architecture's provision of
+them is implementation-backed; the comparison is unmeasured.}
+No claim about standards or regulation is made anywhere in this thesis, and no such source is
+cited. That this architecture supplies the three properties is implementation-backed: published
+versions are immutable at the model layer, the forceable set and gate ordering are a pure
+function tested in isolation, forced publications are recorded in a persisted audit trail, and
+the structural fingerprint is measured on the real templates. That a per-instance agent supplies
+none of them is an argument from the absence of a persisted artifact, not a measurement --- no
+experiment in this thesis attempts to extract traceability from an agent transcript --- and the
+bias direction is favourable to this thesis, since a determined engineer could log a great deal
+around an agent. What such logging cannot produce is the object the other two properties need,
+which is a program that will behave the same way next time.
 
 \section{LLMs for Document and Engineering-Drawing Understanding}
 \label{sec:rel:understanding}
 
+Document intelligence has historically been a read-side field: given an existing artifact,
+produce a semantic representation of it. LayoutLM \cite{xu2020layoutlm}, Donut
+\cite{kim2022donut} and DocLLM \cite{wang2024docllm} are representative, and they share a
+property that matters here --- the input document is not modified, so no obligation exists
+concerning the parts of it that were not the target. The write side imposes exactly that
+obligation, and until recently it would have been fair to say the field did not address it.
+It is no longer fair. DocEdit-v2 grounds a user's edit request in a region of the document and
+then executes textual, visual and layout edits on it \cite{suri2024doceditv2}, which makes
+localized document mutation an explicit research problem rather than an unexamined one. The
+difference this thesis can defend is not that nobody writes, but that DocEdit-v2 re-localizes
+per request, whereas a locator here is a persistent part of the specification that must remain
+stable across instances or fail loudly when it does not.
+
+The spreadsheet line has moved further, and it is worth being precise about how far, because
+the temptation to describe these systems as unvalidated is strong and would be wrong.
+SheetCopilot abstracts spreadsheet functionality into atomic actions, plans over them with a
+state machine, and builds an execution-based evaluation pipeline \cite{li2023sheetcopilot}.
+TableLLM trains for office table manipulation and uses cross-way validation to improve
+automatically generated training data \cite{zhang2025tablellm}. SheetMind constrains its action
+agent's output with a grammar and adds a reflection agent that checks actions against the
+original intent \cite{cheng2025sheetmind}. NL2Formula generates an executable spreadsheet
+formula from a natural-language query \cite{zhao2024nl2formula}, which makes its output the
+closest thing in this literature to a persistent deterministic artifact --- a small program the
+spreadsheet engine will re-evaluate without any model. And SpreadsheetBench builds multiple
+workbook files per instruction, so that a solution is scored on whether it generalizes rather
+than on whether it fits one workbook \cite{ma2024spreadsheetbench}.
+
+So the gap here is architectural, not evidential. Validation exists; structured actions exist;
+executable artifacts exist; multi-file robustness evaluation exists. What differs is where the
+inference sits and what the cases are used for. NL2Formula's artifact is one formula, not a
+specification covering every target region, its formats, its merged cells, its cross-sheet
+references and the requirement that non-target content be untouched. SpreadsheetBench's cases
+score a generated solution; here, cases decide whether a specification may be promoted to a
+deployment artifact, after which instances are produced with no model at all. Both differences
+are real and both are narrow, and stating them narrowly is the point of this section.
+
+For engineering drawings the survey found no comparable line of work: nothing in the surveyed set
+addresses writing into a drawing's entity graph under a preservation obligation. That absence
+is not used as an argument here, for two reasons. It is an absence in a set of 56 works chosen
+for the office carriers, so it is weak evidence about the drawing literature; and the drawing
+carrier is in any case reported only as a case study in this thesis, because the entire system
+was originally built against a drawing template and any figure it produces is contaminated by
+construction (Section~\ref{sec:eval:dwg}).
+
+\paragraph{Status: the survey of this literature is citation-backed; the architectural
+difference is implementation-backed; the drawing claim is explicitly weak.}
+Every characterization above is taken from the fetched abstract of the work in question, and
+the venue of each follows DBLP rather than the survey draft --- seven of the works named in this
+section were among the 26 whose venue the draft recorded incorrectly. That this thesis's
+artifact is a specification rather than a single formula, and that cases here act as a promotion
+criterion rather than as a score, is implementation-backed by the specification schema and the
+publish gate. What is \emph{not} available is any comparative measurement against any system
+named in this section: no experiment in this thesis runs SheetCopilot, SheetMind or
+NL2Formula, the baselines are the three arms defined in Section~\ref{sec:eval:baselines}, and
+no claim of superiority over these particular systems is made or implied. The drawing-literature
+absence is labelled unchecked beyond the surveyed set.
+
 \section{Document Automation, RPA, and Template Filling}
 \label{sec:rel:rpa}
 
-% TODO 三分法在這裡展開，但結論句已經在 Introduction 出現過：
-%      RPA = deterministic but manual / agents = automatic but stochastic /
-%      ours = automatic derivation + deterministic execution
+This is where the positioning sentence of Section~\ref{sec:intro:existing:taxonomy} is
+developed against the literature, and where the citation that section deliberately withheld is
+supplied.
+
+Robotic process automation is the deterministic-but-manual corner. The systematic review by
+Wewerka and Reichert covers 63 studies and defines the field's object as the automation of
+rule-based routine processes for cost and efficiency \cite{wewerka2020rpa}. Its execution model
+is exactly what this thesis wants at deployment: a program, repeatable, versionable,
+auditable, with no model anywhere near it. Its cost is equally clear, and it is not
+non-determinism --- it is the derivation bottleneck. A person must formalize the domain
+knowledge and the artifact's structure into a workflow, cell address by cell address, and a
+person must redo that work when the form changes.
+
+The agent corner is automatic and stochastic. OSWorld provides 369 real computer tasks with
+execution-based evaluation scripts across three operating systems \cite{xie2024osworld};
+WorldGUI stresses planning from varying initial states over real desktop applications
+\cite{zhao2025worldgui}; and Mind the Gap measures Office proficiency specifically, finding
+single-turn frontier models at a maximum score rate of 36.6\% and an agentic system with
+execution feedback, iterative repair and broader automation access at 68.8\%, against a
+community-reference score of 95.5\% \cite{lv2026mindthegap}. In all three, each task instance is
+perceived, planned and executed afresh; the recurrence of a template family is not exploited,
+because these benchmarks are not about recurrence.
+
+Between the two corners sits a bridging community that this thesis must not pretend away.
+ProAgent has language-model agents \emph{construct} workflows from human instruction and also
+make dynamic decisions during execution \cite{ye2023proagent}; Prompt2Task generates and then
+executes smartphone automation from textual prompts, incorporating user feedback into later
+automations \cite{huang2025prompt2task}. Automatically deriving automation logic from natural
+language is therefore not this thesis's distinguishing move, and any framing that presents
+``RPA versus agents'' as an exhaustive dichotomy is obsolete.
+
+The fork is narrower and sharper than that dichotomy. ProAgent gives both construction and
+execution to the model. This work gives construction to the model and takes execution back,
+and --- this is the part that is not merely a preference --- it makes an executable test decide
+whether the boundary between the two phases may be crossed at all. A specification that fails
+a structural gate, or whose semantic oracle disagrees with an independently produced expected
+document, is not published, and no instance is produced from it. The three-way statement of
+Section~\ref{sec:intro:existing:taxonomy} thus reads, with citations: robotic process
+automation is deterministic but manual \cite{wewerka2020rpa}; per-instance agents are automatic
+but stochastic \cite{xie2024osworld,lv2026mindthegap}; the bridging systems automate the
+authoring but keep the model at execution \cite{ye2023proagent,huang2025prompt2task}; and this
+work automates the authoring and removes the model from execution, with an executable admission
+test at the boundary.
+
+\paragraph{Status: the taxonomy is normative; each cell is now citation-backed; the claimed
+advantage is unmeasured.}
+No experiment in this thesis varies the automation paradigm, so the three-way division remains
+a positioning argument, exactly as Section~\ref{sec:intro:existing:taxonomy} states; the two
+Status paragraphs must be read as one claim. What this section adds is that each cell of the
+division now rests on a cited work rather than on assertion, which closes the gap that
+Section~\ref{sec:intro:existing:taxonomy} explicitly left open. That the admission test exists
+and rejects specifications is implementation-backed --- it has rejected real derived
+specifications, including one whose totals had no source and one whose repeat block was offset
+by a row. That the resulting arrangement is \emph{better} than either corner is not measured
+here: no comparative correctness, cost or drift figure against a robotic-process-automation
+baseline or an agent baseline exists in this thesis, and Section~\ref{sec:eval:baselines}
+defines the arms that would produce one.
 
 \section{Programming by Example and Program Synthesis}
 \label{sec:rel:pbe}
 
-% TODO 【這一節是第二危險的鄰居，也是產出裡唯一非補不可的洞：2024–2026 全空白】
-%      FlashFill++ 一類的工作是最直接的比較對象。
-%      區別點：範圍聚合（S3）與 negative obligation（S5）是兩個無法化約成單欄 PBE 的案例。
+The intellectual ancestry of this work is programming by example, and the chapter is stronger
+for admitting it early rather than defending against it late.
+
+FlashFill synthesizes a string-transformation expression from spreadsheet input-output
+examples, ranks candidate programs, detects noisy examples and asks for disambiguating ones
+\cite{gulwani2011flashfill}. Its methodology is this thesis's methodology one level down:
+derivation may be expensive and interactive, the result is a deterministic executable program,
+and that program is then applied repeatedly. FlashMeta generalizes the construction of such
+synthesizers into a framework \cite{polozov2015flashmeta}; RobustFill shows that
+example-to-program synthesis survives noisy examples without any language model
+\cite{devlin2017robustfill}; and FlashFill++ scales the approach in expressiveness,
+performance and program quality in a production spreadsheet context
+\cite{cambronero2023flashfillpp}. Two convenient distinctions are therefore unavailable. Neural
+Program Search already combines a natural-language description with a handful of examples
+\cite{polosukhin2018neuralprogramsearch}, so ``prior example-driven synthesis has no natural
+language'' is false; and FlashFill++ is neither small nor toy, so ``programming by example only
+handles simple single-column string edits'' is false as an absolute statement.
+
+The modern half of this literature is equally relevant and is where the survey draft had a
+hole. Li and Ellis ask directly whether large language models have solved programming by
+example, and find pretrained models ineffective but fine-tuned models strong when test problems
+are in distribution \cite{li2024pbesolved}. Compositional approaches recover from failure by
+decomposing the example-driven task into subtasks rather than re-prompting on the same task
+\cite{khan2025compositional}. CodeARC makes the setting interactive, letting an agent query a
+hidden target function and refine against a differential-testing oracle over 1{,}114 functions,
+with the best of 18 models reaching 52.7\% \cite{wei2025codearc}. An evaluation of iterative
+example-based code generation finds that describing requirements with examples rather than
+natural language costs over 60\% of the score and that over 95\% of successes occur in the
+first round \cite{fu2025firstprompt}. And a hybrid that calls a classical solver first and falls
+back to a model handles tabular transformations better than either alone
+\cite{zhang2025pbemeetsllm}. A related idea appears in code rewriting: synthesize the transform
+from a few examples rather than performing the rewrite, because a synthesized transform is
+inspectable, debuggable and cheap to run \cite{cummins2024codethetransforms}.
+
+The difference that survives all of this is the \emph{unknown binding problem}. A
+programming-by-example system is normally handed the site of the transformation: here is the
+input column, here is the desired output column, learn the function; the domain-specific
+language and the scope are fixed in advance. This work is handed an entire template, an entire
+rules document, and a few source-and-artifact pairs, and must infer which transformations exist
+at all, which structural location in a heterogeneous native artifact each one writes to, how far
+a range extends, and which locations must not be written. Locator inference, rule coverage and
+preservation are therefore not post-processing around a synthesis problem; they are part of it.
+
+Two concrete cases in this thesis do not reduce to a per-column example-driven transformation,
+and it is worth naming them precisely because a vaguer claim here would be the easiest thing in
+the chapter to refute. The first is the detail table of the DOCX dataset, where one column's
+value requires a join to a product master while another requires a join to a shipment manifest,
+seven columns are computed across fourteen slots, and six totals aggregate over a row set that
+must be identical in two separate output documents --- so a per-column program that happened to
+agree would be a coincidence rather than a guarantee. The second is the negative obligations of
+the XLSX dataset, where the correct behaviour at four locations is to write nothing, which no
+input-output example exhibits, because an example of writing nothing is indistinguishable from
+an example that was never generated.
+
+\paragraph{Status: the lineage is citation-backed; the difference is
+implementation-backed; the irreducibility claim is an argument over two datasets.}
+The ancestry claims and the three unavailable distinctions are taken from the fetched abstracts
+of the works cited. That locator inference, extent semantics and negative obligations are part
+of the synthesis problem here is implementation-backed by the specification's locator forms
+(Section~\ref{sec:design:locators}) and the derived implied-blank mechanism, both of which
+exist and are exercised on real files. The claim that the two named cases cannot be reduced to
+per-column example-driven synthesis is an argument, not a proof: it is made over two datasets
+that exist in this repository, and a sufficiently expressive domain-specific language with a
+join operator and an explicit blank action could in principle express them. What the claim does
+establish is the weaker and sufficient point that they are not expressible in the setting those
+systems actually address. The bias direction is favourable to this thesis and is disclosed as
+such in Section~\ref{sec:eval:threats}.
 
 \section{Tool-Making, Skill Libraries, and Amortized LLM Computation}
 \label{sec:rel:toolmaking}
 
-% TODO 【第一名危險鄰居】LATM、Voyager skill library、TroVE、CRAFT、Agent Skills，
-%      以及待核對的 arXiv 2607.08010（Amazon tool-making）。
-%      Gap：這些工作把產生的工具存下來就結束——沒有可執行 oracle、沒有覆蓋率概念、
-%      沒有回歸與版本治理。而在有責任的交付物上，這三者才決定能否上線。
+This is the most dangerous neighbourhood for this thesis, and one work in it is the most
+dangerous single paper. This section is where the forward reference of
+Section~\ref{sec:intro:position:question} lands.
+
+The cost intuition behind compile-once, execute-many is not new and must not be claimed as
+new. Large Language Models as Tool Makers has an expensive model construct a reusable tool once,
+caches it, and has a cheaper model use it repeatedly, amortizing the one-off cost across
+instances \cite{cai2024latm}. Voyager stores successful behaviours as executable skills in a
+retrievable library, using environment feedback, execution errors and self-verification while
+generating them \cite{wang2024voyager}. TroVE induces a compact reusable toolbox while solving
+tasks and takes \emph{verifiability} as an explicit objective, measuring the human time needed
+to verify the result \cite{wang2024trove}; CRAFT generates code solutions on training examples,
+validates their correctness, and only then abstracts them into deduplicated reusable snippets
+\cite{yuan2024craft}; and ReGAL refactors existing programs into shared abstractions, verifying
+through execution that the abstraction does not change program output
+\cite{stengeleskin2024regal}. Four claims are therefore unavailable to this thesis: that
+amortization is novel, that reusable-artifact literature lacks verification, that validation
+before reuse is novel, and that regression thinking is absent.
+
+The paper that removes the fifth is Kujanpää et al., which observes the same problem this
+thesis observes --- that production agents regenerate code for the same procedural steps on
+every request, wasting latency and reliability --- and responds by compiling recurring
+standard-operating-procedure steps into validated, versioned tools \emph{before} deployment
+\cite{kujanpaa2026toolmaking}. The tool maker grounds synthesis in the live environment,
+collects execution traces, observes backend schemas and values, generates candidate tools, and
+repairs them against labelled cases. Deployed on a fulfilment-centre alarm-triage system whose
+agent diagnoses alarms against a 44-node procedure, tool calls reduce median latency by 42\% and
+reduce end-to-end error rate by up to 53\% on 1{,}500 historical alarms, explicitly by
+suppressing run-to-run variance in repeated steps; versioned tools are used for auditability and
+for surfacing specification gaps and upstream data drift. Labelled-case repair, versioning,
+audit logging and drift monitoring are all present. This is simultaneously the strongest threat
+to this thesis's originality and its best witness, since it is industrial evidence that moving
+repeated procedural inference from run time to deployment time genuinely reduces error, variance
+and latency.
+
+Four differences remain, and only the first carries real weight:
+
+\begin{enumerate}
+  \item \textbf{The model stays on the execution path.} At run time the production agent calls
+    the compiled tools directly \emph{and falls back to code generation when needed}
+    \cite{kujanpaa2026toolmaking}. A fallback is not a small residue of the same design. It is
+    the difference between a guarantee and a tendency, because the properties one wants from
+    determinism --- reproducibility, a reviewable diff, a bounded set of behaviours --- are
+    exactly the properties a fallback suspends, and it suspends them on precisely the unusual
+    inputs where they were wanted most. This thesis's boundary admits no fallback at all
+    (Section~\ref{sec:design:runtime}).
+  \item \textbf{The unit of compilation.} What is compiled there is a node-level procedural
+    tool within a larger agent-driven flow. What is compiled here is the whole
+    template-instantiation mapping, so that no orchestration decision remains for a model to
+    make.
+  \item \textbf{The document contract is absent.} Nothing in that deployment must locate a
+    write target inside a native office artifact, keep that location stable across template
+    revisions, or leave every non-target region byte-identical.
+  \item \textbf{Cases qualify tools; rules do not.} Tools are qualified against labelled
+    historical cases, which is a different obligation from asking whether each normative rule
+    in an authoritative document is implemented by some clause of the specification.
+\end{enumerate}
+
+The gap statement of this section is therefore deliberately narrower than the one this thesis
+began with. It is not that tool-making systems store an artifact and stop; they validate,
+refactor, version and monitor it. It is that their reusable artifact is a function or skill
+embedded inside a model-driven run time, that none of them treats a rules document as a
+specification whose obligations must be covered, and that none compiles an entire
+template-instantiation task --- locators and preservation constraints included --- into a
+regression-gated artifact that executes with no model inference whatsoever.
+
+\paragraph{Status: the gap is citation-backed and was narrowed under pressure from one paper;
+the zero-inference property is implementation-backed; the comparative advantage is unmeasured.}
+The narrowing is itself a result of this survey and is recorded as such: the earlier draft of
+this gap asserted that tool-making lacks executable oracles, coverage and version governance,
+and Kujanpää et al. refutes all three, so the assertion was withdrawn rather than softened.
+The four differences above are read from the fetched abstract and from verbatim sentences copied
+out of the full text into \texttt{docs/thesis/refs/abs/b1-toolmaking.md}, including the fallback
+sentence on which difference~1 rests. That this system performs no model inference at execution
+is implementation-backed in a specific and deliberately falsifiable way: a test replaces both
+repair entry points with recorders that fail if called, runs the complete production path, and
+asserts both that no recorder fired and that the recorded model-call count is zero. Reading the
+source would show only that no call site exists today; that test turns red if one is added
+later. What is \emph{not} measured is any comparison against Kujanpää et al. or against a
+fallback-bearing design --- no experiment here quantifies what a fallback costs, and the
+argument in difference~1 is analytical. The bias direction is favourable to this thesis, and
+Section~\ref{sec:eval:threats} lists it.
 
 \section{Execution-Feedback Program Repair}
 \label{sec:rel:repair}
 
-% TODO Self-Debug、Reflexion、AlphaCodium。
-%      Gap：它們的 oracle 多來自現成單元測試；本工作的 oracle 必須從文件比對建構，
-%      而且要處理「沉默失敗」而非「程式當掉」。
+The repair loop of Chapter~\ref{ch:method} descends from a well-developed line of work, and the
+gap this thesis can defend within that line is not the one it originally claimed.
+
+Reflexion converts environment, compiler and task-score feedback into verbal reflections held
+in episodic memory and retried, without updating weights \cite{shinn2023reflexion}. Self-Debug
+has a model inspect execution results and explain its own code to find its own errors, and
+--- importantly for this thesis --- shows improvement on a task where no unit tests exist,
+using code explanation alone \cite{chen2024selfdebug}. So the claim that execution-feedback
+methods presuppose ready-made unit tests is false, and was withdrawn. LDB segments a generated
+program into basic blocks and inspects intermediate variables after each, moving the question
+from ``did it crash'' to ``does the execution state match the intent''
+\cite{zhong2024ldb}. AlphaCodium arranges specification analysis, test reasoning, an initial
+solution, test execution and iterative repair into a flow \cite{ridnik2024alphacodium}, which is
+structurally the same loop used here.
+
+Two more recent works close off the remaining easy claim. A study of self-debugging with
+self-generated tests examines what happens when high-quality tests do not exist, has the model
+generate its own, and identifies self-generated test bias as a real effect
+\cite{chen2025revisitselfdebug}. UTGen and UTDebug go further and learn to generate
+error-revealing inputs \emph{together with} expected outputs, using multiple generated tests,
+test-time scaling and backtracking to limit the damage from a noisy oracle
+\cite{prasad2025utgen}. Automated oracle construction is therefore an active research problem
+with real results, not an unoccupied space.
+
+What remains is not feedback availability but \textbf{oracle construction and independence},
+and the reason it remains is specific to this failure mode. When the failure is a crash, any
+oracle that notices the crash suffices. When the failure is a syntactically valid document
+containing one wrong number, the oracle must know what the right number was --- and if the
+expected output is produced by the same generative process that produced the candidate, the
+same misconception is encoded into the test, so the test passes and the document is wrong. The
+response in this thesis is a red line rather than a technique: the expected artifact for every
+case is computed from the rules by a path that does not include the system under test, and the
+derivation-time oracle compares what the specification would write against that artifact
+(Section~\ref{sec:der:oracles:authortime}). The independence is structural, and it is the reason
+the oracle can catch a wrong value at all.
+
+The mechanism that this section must not oversell is the case-level oracle. It exists, it is
+tested, and it carries four anti-overfitting invariants, but on the automatic derivation path it
+has no caller: derivation closes on the structural gates and the derivation-time oracle, and
+case-level repair is reachable only from an offline command-line entry point and from tests.
+Section~\ref{sec:der:oracles:case} states this in the same words, and no measurement anywhere in
+this thesis is attributed to it.
+
+\paragraph{Status: the gap is citation-backed; oracle independence is implementation-backed at
+the dataset level; one named mechanism has no evidence and is disclosed.}
+The three withdrawn claims --- that execution feedback needs pre-existing tests, that oracle
+generation is unexplored, and that iterative repair is novel --- are withdrawn on the strength
+of the cited works, each read from its fetched abstract. Oracle independence is
+implementation-backed by the dataset construction rule that expected artifacts are never
+produced by the system under test, and by the derivation-time oracle's mismatch code, which has
+fired on real derived specifications and has a negative control that turns a passing comparison
+into a failing one by inverting a single arithmetic operator. The case-level repair mechanism is
+handled under the third route of this thesis's gap policy: it is described as designed and
+tested, its absence from the automatic path is stated, integration is future work, and
+Chapter~\ref{ch:evaluation} attributes nothing to it. The bias direction of omitting it is
+unfavourable to this thesis, since a working case-level loop would strengthen the derivation
+argument.
 
 \section{Verification and Guardrails for LLM Output}
 \label{sec:rel:verification}
 
-% TODO LLM-as-judge 的侷限、property-based / metamorphic testing。
-%      支撐第 4 章的「要 oracle 不要 judge」與第 5 章評測器不得問 LLM 的決定。
+This section does not argue a gap. Its function is to ground a design decision that would
+otherwise look like a preference, namely that the acceptance authority in this system is an
+executable predicate and never a model's judgement.
+
+Two traditions supply the positive grounding. Constrained decoding rejects token sequences that
+a parser can already prove ill-formed: PICARD attaches an incremental parser to text-to-SQL
+decoding and makes lexically, grammatically or schema-invalid output difficult to generate at
+all \cite{scholak2021picard}. The lesson transfers directly --- whatever a grammar or schema can
+decide should never be delegated to a judge --- and so does its limit, because a valid SQL query
+can still return the wrong rows, exactly as a valid \texttt{.xlsx} can still contain the wrong
+amount. Structural validity and semantic correctness must be separate channels, which is why
+they are separate channels in Section~\ref{sec:eval:channels}. The second tradition addresses
+what to do when the exact expected output is hard to enumerate. QuickCheck has the programmer
+declare properties that should hold and generates inputs to test them, rather than writing an
+expected output per input \cite{claessen2000quickcheck}; metamorphic testing attacks the test-
+oracle problem by specifying relations that must hold between the outputs of related inputs
+\cite{chen2018metamorphic}. Several such relations are natural here --- scaling an amount,
+shifting a date, permuting source rows, and the invariance of every non-target region --- and
+none requires a model.
+
+The negative grounding concerns judges. A systematic robustness assessment of
+language-model judges finds them susceptible under both pointwise and pairwise protocols, with
+robustness highly sensitive to the prompt template and to the choice of judge model, and with no
+defence dominating across robustness, utility and cost \cite{li2025judgerobustness}.
+Self-preference bias is measured directly: a strong model prefers its own outputs, and models
+favour text of lower perplexity to themselves more than humans do \cite{wataoka2024selfpreference}.
+And JudgeBench constructs response pairs with objectively decidable correctness and finds that
+strong judges, including a frontier model, perform only slightly better than random guessing on
+the hard pairs \cite{tan2025judgebench}.
+
+Care is needed in how much is drawn from the middle result. What is demonstrated is a systematic
+preference dependence, not a theorem that every generator error correlates with a judge error;
+this thesis states the weaker claim, which is sufficient for its purpose. Combined with
+JudgeBench, the position is: when an independent executable criterion for correctness exists,
+substituting a model's preference for it is a methodological error, not a convenience. For
+template instantiation --- where a visually flawless document may contain one consequential wrong
+value --- the acceptance authority is therefore an executable structural, semantic or
+preservation predicate. Section~\ref{sec:der:oracles:judge} states the same rule for derivation,
+and Section~\ref{sec:eval:evaluator} enforces it for measurement.
+
+\paragraph{Status: the grounding is citation-backed; the no-judge property is
+implementation-backed; the strong reading is explicitly not claimed.}
+That no model is consulted at acceptance or at scoring is implementation-backed: the shared
+evaluator is a deterministic command-line program with a frozen scoring policy, it can lint and
+self-test itself, and it reports a version and a source hash with every score. The claim that a
+judge \emph{cannot} substitute for an oracle is not made; what is claimed is the narrower
+statement that where an executable criterion exists it should be preferred, supported by the
+three cited results. The stronger reading of self-preference bias --- that generator and judge
+errors are necessarily correlated --- is available in the rhetoric of this area and is
+deliberately not asserted, because the cited work does not establish it. Two of this section's
+grounds predate language models entirely, which is a point in their favour rather than against.
 
 \section{Cost-Aware Agent Evaluation}
 \label{sec:rel:evaluation}
 
-% TODO Gap：多數 agent 評測只報準確率，不報變異度與攤提成本，
-%      而這兩項正是生產環境的決策依據。這一節直接支撐第 5 章的指標選擇。
+The final gap is the one that changed most under scrutiny, and it changed in the direction of
+narrowing.
+
+The claim that agent evaluation reports only accuracy was true recently and is not true now.
+Cost-of-Pass defines the expected monetary cost of obtaining a correct answer and finds that
+the marginal accuracy gained from majority voting or self-refinement frequently fails to justify
+its cost \cite{erol2025costofpass}. An infrastructure-level study measures the latency, resource
+use and energy of agentic multi-turn reasoning and reports diminishing returns from additional
+inference compute alongside growing latency variance \cite{kim2026dynamicreasoning}.
+$\tau$-bench compares final database state rather than surface text and introduces $\mathrm{pass}^k$
+to measure whether an agent succeeds consistently across repeated runs \cite{yao2025taubench}.
+MAESTRO runs 12 multi-agent systems under controlled repetition and finds executions that are
+structurally stable yet temporally variable, with substantial run-to-run variance, and reports
+that the system's architecture dominates its reproducibility and its cost-latency-accuracy
+trade-off more than the backend model does \cite{ma2026maestro}. And a reliability study
+decomposes agent behaviour into twelve metrics across consistency, robustness, predictability
+and safety, evaluates 15 models, and finds that recent capability gains have yielded only small
+reliability gains \cite{rabanser2026reliability}.
+
+These results do more than close a gap; they supply the precise form of this thesis's answer to
+the strongest available objection, which is that a better model will make per-instance
+execution reliable enough. The argument has four layers, and the sentence it must not collapse
+into is ``no future model can make per-instance agents reliable'', which is unprovable. Layer
+one: capability and reliability are different axes, and improvement on the first has bought
+little on the second \cite{rabanser2026reliability}. Layer two: run-to-run variance is
+measurable and is driven substantially by architecture rather than by the backend model
+\cite{yao2025taubench,ma2026maestro}, so replacing the model does not address it. Layer three:
+in document workflows the errors are silent corruption rather than visible failure, they are
+sparse but severe, and agentic tool use did not remove them \cite{laban2026delegate}. Layer
+four: every instance carries a recurring inference cost whose marginal value is often negative
+\cite{erol2025costofpass,kim2026dynamicreasoning}. The correct conclusion is architectural
+rather than pessimistic: improving a model lowers the probability of an inference error, but it
+does not change the fact that per-instance execution incurs stochastic inference $N$ times, and
+a recurring task that can instead be compiled into a validated deterministic program eliminates
+those execution-time properties by construction rather than improving them probabilistically.
+
+What remains missing is an \textbf{amortization-aware evaluation for a recurring template
+family}. The quantity a deployment decision needs is not the cost per successful agent run; it
+is a one-time derivation cost --- including every failed attempt and every repair --- plus a
+near-constant deterministic execution cost across $N$ instances, together with the break-even
+instance count against per-instance execution, and the cost of detecting and repairing drift
+when the template changes. Section~\ref{sec:eval:metrics} defines those quantities, and
+Section~\ref{sec:eval:reruns} defines the asymmetric rerun budget that keeps the variance
+comparison fair rather than flattering.
+
+Honesty requires one more thing of this section. The variance that this thesis removes is
+execution-time variance, and it did not remove variance from the method as a whole; it moved it
+into derivation, where it has been measured. Two consecutive derivations over identical prompts
+and identical payloads produced specifications differing in slot count, in the number of
+repeat blocks, in rule coverage and in hard-error count. That measurement is this thesis's own,
+it is reported rather than omitted, and it is the reason research question two asks about
+consistency separately for the two phases.
+
+\paragraph{Status: the gap is citation-backed and narrowed; execution determinism is
+implementation-backed; every comparative cost figure is unmeasured.}
+The withdrawal of ``agent evaluation reports only accuracy'' rests on the five works cited, all
+five of which postdate the framing it replaces. Execution-time determinism is
+implementation-backed by the zero-inference production test described in
+Section~\ref{sec:rel:toolmaking}, and derivation-time variance is implementation-backed by the
+two-derivation comparison just described, both of them figures from this repository rather than
+estimates. Everything comparative is missing, and the list is short enough to state in full: no
+per-instance baseline cost, no break-even instance count, no comparative correctness figure, and
+no measurement of baseline behaviour under template drift. The monetary column in the evidence
+store is zero throughout, because the derivations were run under a subscription rather than
+metered billing, and whether the cost table will finally be reported in tokens or in currency is
+undecided and must be fixed before the formal experiment. Section~\ref{sec:eval:threats} carries
+the corresponding threats; the bias direction of an unmeasured break-even point is favourable to
+this thesis, since a break-even count large enough would undermine the amortization argument
+entirely.
