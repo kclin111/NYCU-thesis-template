@@ -256,9 +256,11 @@ currently produced handle-backed field-map shape.}
 \texttt{drift.spec\_field\_drift} reports added, removed, and attribute-level field
 changes; \texttt{models.DwgProductionVersion.save} prevents mutation of the published
 spec/hash identity; and \texttt{regression.RegressionRunner.run} persists results for
-all active cases of the lineage. The drift function reads \texttt{target.handles} rather
-than the generic \texttt{targets} representation; diffability for a future spec that
-uses only generic target refs remains normative until that path is implemented.
+all active cases of the lineage. The drift function reads the drawing-flavoured spelling of
+a target rather than the format-neutral list, which was recorded here as a prospective
+blind spot; Section~
+ef{sec:design:drift} reports the measurement that retired that
+concern and the narrower gap it found instead.
 
 \paragraph{P5---independently auditable rule coverage.}
 $S$ must enumerate which rules and fields it claims to cover, and the denominator must
@@ -363,145 +365,1051 @@ separate decision and is not claimed here.
 
 \subsection{Design Principle: Fail Loud, Not Silent}
 \label{sec:design:failloud}
-% TODO ★ 尚未動筆 ★ 這一小節在 2026-08-15 撰寫 §3.1 時被整段刪除，同日復原為寫作規格。
-%      刪除它不是決定，是疏漏——本節是全篇的核心設計信條，不可省略。
-% TODO 明確寫成本論文的核心設計信條，並回指第 2 章的失敗模式分類。
-%      要點：一個有理有據但錯的輸出，比一個明白失敗的輸出更危險，因為它會被交付出去。
-%      §3.1.1 的 information boundary 與 §3.1.3 的 P3、P5 都是這條信條的實例，
-%      寫的時候要把它們收攏成同一個原則，不要各講各的。
+
+% 2026-08-23 動筆。體例與第 4／5 章相同：每一節末尾強制有 Status 段。
+% §3.1.1 的 information boundary 與 §3.1.3 的 P3／P5 在這裡被收攏成同一個原則，
+% 不重述它們的內容，只說它們為什麼是同一件事的三個層級。
+
+A \emph{silent failure} is an output that is complete, well formed, correctly formatted,
+and wrong. It is the failure mode this thesis is organized around, and every design
+decision in this chapter that looks unnecessarily strict is a consequence of it.
+
+The asymmetry is economic rather than aesthetic. A loud failure costs a rerun: somebody
+sees an error code, reads the reason, and fixes an input or a rule. A silent failure
+costs whatever the wrong number causes downstream, and it costs it \emph{after} the
+document has been signed, filed, or paid against, because nothing in the delivery path
+distinguishes it from a correct document. The two are not two points on one scale of
+quality. A system that refuses too often is annoying and, crucially, \emph{measurable} ---
+its refusals are counted. A system that guesses is neither: its guesses are counted as
+successes. Optimizing a template-filling system for the number of fields it manages to
+produce therefore optimizes it in exactly the wrong direction, and the procedures in
+Chapter~\ref{ch:method} are arranged to resist that pressure. The failure-mode taxonomy of
+Section~\ref{sec:rel:failures} is the vocabulary this creed is stated over.
+
+\paragraph{The same principle at three levels.}
+The two earlier subsections state this creed twice without naming it, and it is worth
+collapsing them, because the three statements are not analogies --- they are the same
+rule applied to three different artifacts.
+
+\begin{enumerate}
+  \item \textbf{The produced document.} This is the familiar level, and property P3 of
+    Section~\ref{sec:design:properties} is its statement: a target that cannot be resolved
+    ends the run with a code rather than being relocated by a model. The forbidden
+    behavior is ``locate approximately, then write''.
+  \item \textbf{The specification.} A specification can be quietly wrong in ways no
+    single execution reveals. The information boundary of
+    Section~\ref{sec:design:inputs} is the statement at this level: if the rule artifact
+    $R_d$ were permitted to carry target addresses, a derivation that merely copied them
+    would be indistinguishable from a derivation that found them. The specification would
+    look derived; nothing about it would be. The forbidden behavior is ``supply the
+    answer, then measure the search''.
+  \item \textbf{The measurement.} A metric can be quietly wrong while every mechanism
+    under it is correct. Property P5 is the statement at this level: while the coverage
+    denominator was enumerated by the agent being scored, ``22 of 22 covered'' and
+    ``22 of 40 covered'' were the same observation, and no test could fail. The forbidden
+    behavior is ``let the thing being measured choose the denominator''.
+\end{enumerate}
+
+Each level has its own way of being plausible while wrong, and therefore needs its own
+loud channel; a guarantee at one level does not propagate to the others. This is why the
+thesis reports semantic correctness, extent diagnostics, presentation, untouched regions
+and package integrity as separate numbers (Section~\ref{sec:eval:channels}) instead of one
+accuracy figure. An aggregate is a fourth place for a silent failure to hide.
+
+\paragraph{What the principle forbids, concretely.}
+The creed is not a slogan in this system; it is a set of refusals that each cost
+something. The source-side extent gates are the clearest examples, because each one
+refuses a value that would otherwise look entirely normal:
+\texttt{source\_locator} refuses an extent that selected zero rows (returning $0$ for
+``sum of no rows'' is indistinguishable from a genuine zero); refuses an extent that
+swallowed a subtotal row (the result is exactly twice a plausible number); and refuses a
+blank or non-numeric cell inside a numeric aggregate rather than coercing it to zero,
+which is the most common way a spreadsheet quietly under-reports. The value layer applies
+the same rule one stage later: its aggregate helper raises rather than coercing,
+explicitly so that it cannot become a second, laxer gate behind the first. The equality
+merge of Section~\ref{sec:design:loc:range} is inner for the same reason
+(Section~\ref{sec:design:boundaries}, B4): defaulting an unmatched key would convert a
+missing record into a normal-looking number that nobody authorized. A duplicated bookmark
+name or content-control tag identifies nothing and is recorded as ambiguous rather than
+resolved to whichever copy came first. And the one construct in the IR whose whole effect
+is to \emph{relax} a publish gate --- a declaration that a reference is deliberately left
+blank --- is checked three ways at derivation time, and a declaration that fails any check
+is not attached to the specification at all
+(Section~\ref{sec:design:ir}), because a declaration that both fails and inflates the
+coverage numerator is a silent failure of the measurement level while looking like a
+caught defect at the specification level.
+
+\paragraph{The price, stated rather than hidden.}
+Fail-loud has a bill and this thesis pays it in a visible place. Both of the best
+specifications produced for the two main evaluation carriers are, as measured, blocked
+from publication: on the XLSX template the merged publish gate reports $13$ blocking items
+and on the DOCX pair it reports $8$. Neither number is a defect count; both are
+correctness-preserving refusals, and Section~\ref{sec:der:evidence} shows that reading
+them as a defect count is itself an error, because the same repository has reported
+``$N$ unresolved'' from two different counters that disagree in both directions.
+
+\paragraph{Status: implementation-backed as a set of named refusals; \emph{not} a proof
+that no silent failure remains.}
+The principle is realized as error codes and gates that can be enumerated --- among them
+\begin{quote}
+\ttfamily\raggedright
+LOCATOR\_RANGE\_EMPTY, LOCATOR\_RANGE\_CONTAMINATED,\
+SPEC\_REPEAT\_TARGET\_OVERLAP, SPEC\_REPEAT\_SLOT\_ALIGNMENT\_UNVERIFIED,\
+SPEC\_FORMULA\_INPUT\_UNPRODUCED, CAD\_JOB\_MANIFEST\_REJECTED,\
+CACHED\_HANDLE\_NOT\_FOUND
+\end{quote}
+\noindent and \texttt{benchmark/probe/guard\_sweep.py} mechanizes the rule that adding a new
+refusal must not quietly retire an older one: it disables each guard in turn and requires
+that guard's own tests to fail, and a row that selects no tests is treated as invalid
+rather than as passing. What must not be inferred from any of that is that the produced
+documents contain no silent failures. The thesis has a measured counterexample from its own
+system: on the XLSX evaluation template the derived specification declared no column for
+the remarks field, five calibration and development instances were executed, and three of
+the resulting cells were scored \texttt{silent\_failure} by the shared evaluator --- output
+that was complete, plausible, and wrong. That case is discussed as a result rather than as
+an exception in Sections~\ref{sec:der:boundaries} and~\ref{sec:eval:channels}; here it
+fixes the strength of the claim. The system is built so that the \emph{known} ways of
+being quietly wrong are loud, and it measures how many of them remain, but ``fail loud''
+is a design discipline with an evidence trail, not a guarantee.
 
 \subsection{Scope and Applicability Conditions}
 \label{sec:design:scope}
-% TODO ★ 收窄後的命題寫在這裡，Introduction 只放結論句 ★
-%      2026-08-15 註：命題本身已寫進 §3.1.2（Compile-Once, Execute-Many）的正文，
-%      但那裡是順著 compile-once 的論證帶出來的，沒有獨立成「適用條件」的判準清單，
-%      也沒有往第 6 章的前向引用。本小節仍要寫，並與 §3.1.2 交叉引用而非重複。
-%      適用條件（三條都要成立）：
-%        1. recurrent —— 同一份模板會被實例化多次（否則過不了 break-even）
-%        2. deterministically derivable —— 輸出可由結構化來源資料確定性推導
-%        3. explicit operational rules —— 存在明確的操作規則文件，而非需要真實推理的判斷
-%      不適用的情境在第 6 章 §6.2 展開，這裡只給定義不談後果。
+
+Section~\ref{sec:design:compile-once} introduced the target problem class in the course of
+arguing for compile-once execution. This subsection states it as an admission test, since
+Chapter~\ref{ch:intro} refers to it and Section~\ref{sec:concl:limits} develops what
+happens when it fails. Three conditions must hold together; each is stated with the
+question one would actually ask before adopting the method.
+
+\paragraph{C-I --- Recurrence.}
+The same template, or a lineage of revisions of it, is instantiated many times.
+\emph{Operational test:} can one name the expected number of instances per template
+revision, and is it large enough that a one-off derivation cost is amortized? The
+derivation is the expensive, stochastic step; nothing about the method is cheap at $N=1$.
+Recurrence is what makes the trade in the first place, and it is why
+Section~\ref{sec:eval:metrics} reports a break-even $N$ rather than a cost ratio.
+
+\paragraph{C-II --- Deterministic derivability.}
+Every output value is a function of structured source data and the rules, computable
+without judgement. \emph{Operational test:} for each field, can two competent people,
+given the same sources and the same rule document, be expected to produce the same
+character string? If a field requires professional discretion --- a risk rating, a
+recommendation, a summary in someone's words --- it fails this condition, and the correct
+response is to leave it outside the method rather than to widen the method. The evaluation
+enforces this rather than assuming it: the path that lets a person supply a value at
+execution time exists in the code and is disabled at derivation time
+(Section~\ref{sec:design:runtime}), so a derived specification cannot classify a field it
+found hard as one a human will fill in.
+
+\paragraph{C-III --- Explicit operational rules.}
+The mapping is written down as rules over the source data, not held as tacit practice.
+\emph{Operational test:} does an artifact exist which states, for each field, where the
+value comes from and what is done to it --- and would a new employee be handed that
+artifact? Note what this condition does \emph{not} require. It does not require the rules
+to be machine-readable, complete, or even correct: both evaluation datasets use prose rule
+documents, and building one of them found three rule statements that disagreed with the
+real form, one of which pointed at a location that does not exist. It does, separately,
+forbid the rules from carrying write coordinates, which is the constraint of
+Section~\ref{sec:design:inputs} and is a condition on the \emph{experiment} rather than on
+the task.
+
+The three conditions are independent. A recurring task with tacit rules fails C-III and is
+a documentation problem before it is an automation problem. A well-documented,
+deterministic task performed once fails C-I and should simply be done by hand or by an
+agent. A recurring, well-documented task containing one discretionary field fails C-II for
+that field only, and the honest decomposition is to carve the field out --- which this
+thesis does not claim to have measured, because it disabled the mechanism that would allow
+it.
+
+\paragraph{Status: normative, with the selection bias disclosed.}
+These conditions are definitional, not empirical: no experiment in this thesis varies them.
+Both evaluation datasets were chosen \emph{because} they satisfy all three, which means the
+thesis measures the method inside its declared scope and says nothing about how it degrades
+near the boundary --- for instance, how a specification behaves when a rule document is
+twenty per cent incomplete, or when one field in twenty needs judgement. The bias direction
+is favourable to the method and is recorded as such in Section~\ref{sec:eval:threats}. The
+consequences of each condition failing are discussed in Section~\ref{sec:concl:limits};
+this subsection deliberately gives only the definitions.
 
 % =====================================================================
 
 \section{Domain-Dependent and Domain-Independent Layers}
 \label{sec:design:layers}
 
-% TODO 這一節決定論文被當成 tool paper 還是 method paper，要放在系統描述的最前面。
-%      領域相關：dump 工具、locator 的實作、target adapter
-%      領域無關：IR 結構、gates、oracle 種類、repair loop、lineage、覆蓋率計分
-%      三條載體（docx / xlsx / dwg）共用同一條 derive -> gate -> compile -> run 管線。
+Whether this work is a tool for one file format or a method that happens to have been
+implemented for three depends on where the format-specific code stops. This section states
+that seam, because it is a claim about the contribution rather than an implementation
+detail: everything on the neutral side is shared by all three carriers as the same code,
+not as three parallel implementations that agree today.
+
+\begin{table}[htbp]
+\centering
+\caption{Where format knowledge is allowed to live.}
+\label{tab:design:layers}
+\begin{tabular}{p{0.30\linewidth}p{0.60\linewidth}}
+\hline
+\textbf{Carrier-dependent} & \textbf{What it must answer} \\
+\hline
+Structured extraction & What is in this file, as a dump: the drawing dumper through the CAD
+gateway; \texttt{DocxTargetAdapter.inspect} and \texttt{XlsxTargetAdapter.inspect} in
+process. \\
+Target location, write-back, and the baseline-to-expected diff & The operations of the
+\texttt{target\_ref.TargetAdapter} protocol, plus \texttt{addressable} and
+\texttt{rebind}. \\
+Package preservation & \texttt{xlsx\_package}: which bytes must survive a write
+(Section~\ref{sec:design:targets}). \\
+\hline
+\textbf{Carrier-neutral} & \textbf{Why it can be} \\
+\hline
+The IR and its normalizer & \texttt{spec\_ir} speaks of documents, fields, extents, repeat
+blocks and blank targets; none of those words names a format. \\
+Source locators and row sets & \texttt{source\_locator}, \texttt{row\_set}: a source
+workbook is read the same way whatever the output template is. \\
+The value layer & \texttt{value\_layer}: formulas, rounding, formatting. \\
+The compiler & \texttt{compiler.compile\_cad\_job} produces a carrier-neutral write plan
+that \texttt{document\_production} or the CAD gateway then executes. \\
+Gates, oracles, coverage & \texttt{spec\_check}, \texttt{gates}, \texttt{rule\_coverage}. \\
+Lineage, fingerprint, drift, regression & \texttt{models}, \texttt{fingerprint},
+\texttt{drift}, \texttt{regression}. \\
+\hline
+\end{tabular}
+\end{table}
+
+Two properties of this seam are load-bearing. First, the carrier-dependent operations are
+the \emph{only} ones a new format must supply:
+\texttt{target\_ref.BaseTargetAdapter} implements \texttt{diff}, \texttt{verify} and
+\texttt{describe} once over a single per-format primitive, so a format states what its
+addressable targets are and inherits the rest. Writing those three per format is how a
+\texttt{.docx} diff quietly starts reporting something subtly different from a drawing
+diff, which no reviewer can see because the two are never displayed side by side. Second,
+the neutral side is neutral in its \emph{vocabulary} as well as its code: a specification's
+write target is normalized to \texttt{\{kind, ref\}}, so ``which places does this
+specification write'' is one function rather than one per carrier.
+
+{\sloppy
+\paragraph{The seam is not the module namespace, and confusing the two has cost something.}
+The Python package is still called \texttt{features.dwg} and the compiler entry point is
+still \texttt{compile\_cad\_job}; both names are historical, from the drawing-only
+prototype, and renaming them would couple a cosmetic change to models, migrations, API
+paths, frontend types and the CAD case-study contracts. The names are therefore left alone
+--- but the \emph{messages} were not neutral, and that was a real defect rather than an
+aesthetic one. Until it was corrected, a failed specification validation returned
+``DWG spec validation failed'' for every carrier, so an Excel run whose specification was
+rejected told its reviewer that something about AutoCAD had failed; two XLSX
+specifications were in fact rejected that way. The sibling drawing error codes were audited
+at the same time and are correctly confined to the drawing branch. The general lesson is
+recorded in Section~\ref{sec:der:gates}: a correct check whose message names the wrong
+repair costs a reviewer as much as a wrong check, and no test covers the wording.
+
+\par}
+
+\paragraph{Status: implementation-backed, with one measured way the seam has been crossed
+accidentally.}
+The table above describes the current module graph, and the \texttt{TargetAdapter} protocol
+makes it checkable rather than aspirational. What it does not guarantee is that every
+\emph{path} through the neutral code has been exercised by every carrier. The measured
+counterexample is Section~\ref{sec:der:statemachine}'s: the single-document branch of the
+derivation service did not carry repeat blocks at all, because the only dataset that had
+ever used them produced two documents and therefore took the other branch --- a correct
+agent reply was persisted with the detail table missing and no error raised. Neutrality of
+the code is therefore claimed; uniform coverage of the code by both carriers is not, and
+Section~\ref{sec:eval:threats} records it as a threat.
 
 \section{Specification IR}
 \label{sec:design:ir}
 
-% TODO 欄位定義、locator、值來源、格式化規則、約束。
+The IR is the artifact the whole method exists to produce: the reviewable, versionable,
+executable object that a derivation emits once and every later instance consumes. This
+section describes what it addresses; Section~\ref{sec:design:boundaries} has already stated
+what it demonstrably cannot.
+
+\paragraph{Scope: one instance, not one file.}
+A specification describes the whole output set of one instance. Its root is a list of
+documents, each with a role, a template reference, a list of fields, a list of repeat
+blocks, and a list of blank-target declarations; declarations more than one document reads
+--- named extents --- live in a shared section beside them. The unit is the instance
+because that is the unit of the task: a customs shipment produces a commercial invoice
+\emph{and} a packing list from one set of rules, and deriving them separately is neither
+the same unit of work as the agent baseline it is compared against nor safe, since two
+independently declared extents can disagree about which source rows are detail rows and
+nothing at execution time would notice.
+
+An earlier generation of the IR had a single field list at the root, and twenty-one stored
+specifications still use it. They are not re-derived. \texttt{spec\_ir.spec\_documents}
+reads either generation as the same list, and every consumer goes through it. This
+normalizer is the point of the module rather than a convenience: a consumer that reads
+the root field list directly finds it empty on a new-shape specification and reports a
+successful run that wrote nothing, which is this thesis's definition of a silent failure.
+
+{\sloppy
+\paragraph{A field.}
+A field carries a name, a value source (\texttt{source}, \texttt{computed},
+\texttt{constant}, \texttt{carry\_over}, or the disabled \texttt{user\_input}), the source
+key or semantic \texttt{source\_locator} that supplies its value, an optional transform and
+transform type, an optional render format, an optional aggregate over a named extent, a
+human-language description carrying no meaning to the compiler, and a target. Names are
+global across documents: one shared formula namespace is what makes a cross-document rule
+expressible at all --- ``the two documents' totals agree'' is exactly that shape --- and the
+cost, that two documents reusing an obvious name collapse into one, is reported as a
+warning rather than guessed at.
+
+\par}
+
+\paragraph{A repeat block.}
+A block declares a detail table once and is expanded deterministically into the template's
+fixed slots, so the size of a specification stops depending on how many detail lines the
+calibration instance happened to have. It names the extent it iterates, the number of slots
+the template offers, where the first slot starts, how many physical rows form one logical
+record together with the named role of each, what happens to a slot the instance has no
+data for, and its columns; each column names its target through a template string
+containing a slot placeholder, and reads either a source column of the extent or a
+per-row expression over it. The one policy for an unused slot is to blank it, and
+deliberately only one: leaving a slot alone keeps the previous batch's row visible in the
+produced document.
+
+\paragraph{Blank targets.}
+A document may declare references it deliberately does not write, so that a rule whose
+obligation is negative --- ``this cell must stay blank'' --- can be implemented rather than
+left unresolved. This is the only construct in the IR that relaxes a publish gate, so a
+declaration must pass three derivation-time checks: every reference must be addressable on
+the template, must be blank in the expected artifact, and must be written by nothing else in
+the specification. A declaration failing any of them is reported together with the check
+that failed and is \emph{not} attached to the document, because attaching it would let a
+false claim into the coverage numerator even while a finding blocked the publish.
+
+\paragraph{The IR is also a published contract, and the contract does not currently hold.}
+A JSON Schema for the specification ships in the contracts package, and it is a real
+constraint rather than documentation: several of its object definitions close
+\texttt{additionalProperties}, so a key the schema does not know is illegal rather than
+ignored. That strictness has already caught the failure mode this repository pays for most
+often --- an allow-list that silently drops a key --- but in the opposite direction. When
+the repeat-block definition was checked against a real specification for the first time, it
+turned out to have been forbidding, for two design revisions, the row-set columns the
+implementation had been emitting all along, because no test had ever validated a real
+specification against it.
+
+That check was extended for repeat columns but not for the corpus. Validating every stored
+specification against the published schema now gives $24$ of $35$ valid and $11$ invalid,
+from eight distinct causes. Three are legacy specifications predating a required key and one
+is a legacy row shape; the remaining seven are live divergences between what the backend
+emits and what the contract permits, including the aggregate key introduced for detail-table
+totals on a field, provenance and label keys the derivation attaches to repeat blocks and
+their columns, and a null render format where the schema requires a string. The three most
+recent specifications for the XLSX evaluation template are valid; a fresh derivation of the
+DOCX pair would not be, because the field-level aggregate key it needs is still not in the
+contract.
+
+\paragraph{Status: implementation-backed for the IR and its normalizer; the published
+contract is measured and does not hold over the stored corpus.}
+\texttt{spec\_ir} is a pure module with a normalizer both generations pass through, and its
+shape checks are the same functions the write side and the read side use, so a specification
+cannot be validated by one vocabulary and executed by another. The contract gap is a real
+defect and is handled under the first of this thesis's three routes for such a gap --- fix
+the implementation, with a recorded entry naming what it blocks --- rather than by weakening
+the claim: the correct statement today is that the IR \emph{has} a published contract which
+$24$ of $35$ stored specifications satisfy, not that the contract is an enforced invariant.
+The acceptance criterion recorded with that entry is the one this measurement makes obvious:
+a check that validates the stored corpus, not another hand-written fixture, since a fixture
+is written from the same understanding as the code it is meant to contradict.
 
 \section{Structured Dump as Grounding}
 \label{sec:design:dump}
 
-% TODO docx / xlsx 的 inspect 與傾印；CAD 端的 DumpDwg 與 labeled-field 解析。
-% TODO 【誠實揭露】openpyxl 的 load/save 有量測到的損失（儲存格註解、列印設定），
-%      python-docx 亦有邊界情形。這些屬於載體限制而非方法限制，但要寫出來。
+Nothing in the derivation opens a template. The agent is shown a \emph{dump}: a structured
+inventory of what a template contains and where it can be written, produced by
+deterministic code before any model call. This is the grounding step, and three properties
+of it matter for the thesis.
 
+\paragraph{One shape for three carriers.}
+A drawing dump is produced by the CAD gateway; a \texttt{.docx} or \texttt{.xlsx} dump is
+produced in process, since neither has a gateway, a worker, or a cold start to time out on.
+Both are then reshaped into the same envelope --- a list of entities, each with an opaque
+reference, its current text, and its kind --- with the richer per-target detail (caption,
+positional flag, physical location) riding alongside. This is not a fudge: because the
+target reference is already defined as a format-neutral identity, reshaping here means the
+baseline-to-expected diff, the field-map derivation, the evidence record, the compiler, the
+verifier and the publish gates all work on a Word template without a second implementation
+of any of them. Two things are deliberately kept \emph{outside} the entity list. A
+document's full text lines ride beside it, because a regression case comparing against an
+approved document must see text the specification never mentions, while a paragraph is not
+a write target and putting it in the entity list would make target verification accept it as
+a place a field may write. A workbook's sheet titles are recorded explicitly, because a
+blank cell is not a target, so a sheet whose write points are all still empty would
+otherwise be invisible in the dump.
+
+\paragraph{Content addressing, and the version of the dumper.}
+Dumps are cached and keyed by tenant, the artifact's content hash, the inspection level, the
+target kind and the scope, so re-deriving over unchanged bytes performs no extraction, and
+the cache disposition per template is reported with the result rather than hidden. The key
+carries a dump schema version for a reason that is easy to miss: a dump is a pure function
+of the file's bytes \emph{and of the dumper}. Content addressing covers only the first, so
+changing what the extractor emits without touching any file leaves every key matching and
+serves stale-shaped dumps indefinitely; bumping the constant invalidates them by
+construction. The target kind is in the key for the analogous reason --- a \texttt{.docx} dump
+and a drawing dump are different shapes of answer to the same question, and one must never be
+served for the other.
+
+\paragraph{Honest disclosure: the carrier libraries lose things.}
+An extractor is only as faithful as the library under it, and this one has measured losses.
+Across the $29$ real \texttt{.xlsx} files in the repository, a load/save round trip through
+the spreadsheet library silently drops the calculation chain and the shared-string table
+(both harmless, since Excel rebuilds them), the printer settings and the sheet relationships
+that reference them, cell comments together with their legacy drawing part, chart colour and
+style parts, and --- only when an optional imaging dependency is absent --- every embedded
+image. That last one was found the expensive way: the dependency was present in the
+development environment, declared nowhere, and absent from a container build, so images
+disappeared from written workbooks and every run reported success.
+
+Two consequences are worth separating, because they land in different places. As a
+\emph{carrier} limitation it belongs here: what a spreadsheet library can round-trip bounds
+what any method built on it can promise, and it is not a limitation of compile-once
+execution. As a \emph{measurement} problem it belongs in
+Section~\ref{sec:design:targets}, because for a period the system under test lost exactly the
+parts that the benchmark's package-integrity channel injects as its fault, which made that
+channel unable to tell a correct run from a deliberately broken one.
+
+\paragraph{Status: implementation-backed, with the extractor's coverage stated as a bound.}
+The cache key, the version constant and the two carriers' in-process extractors are all in
+the production path and are exercised by the derivations reported in
+Chapter~\ref{ch:evaluation}. What is \emph{not} claimed is that a dump enumerates everything a
+template can express. A spreadsheet dump offers only cells that carry content --- measured on
+the real monthly-report template, $27$ of them, while the entire data area the specification
+writes ships blank --- and that measurement is the reason target verification and target
+addressability are two different questions in Section~\ref{sec:design:targets} rather than one
+lenient one.
 \section{Locator Mechanisms}
 \label{sec:design:locators}
+
+A locator is the durable, re-executable rule for finding something by meaning rather than
+by address. The distinction is the method's centre of gravity: an absolute cell reference
+such as \texttt{B153} is correct exactly until a row is inserted, a column is moved, or a
+line of descriptive text is added above the table, and when it stops being correct it does
+not stop producing a value.
 
 \subsection{Semantic Locators}
 \label{sec:design:loc:semantic}
 
-% TODO label -> value 的鄰近／對齊關係；以 section 限定搜尋範圍避免跨區塊誤命中；
-%      sheet alias 與 fallback 策略。
+A single-cell source locator names the artifact role it reads, the sheet by semantic name
+with accepted aliases, and the cell by the intersection of a row filter and a column
+header. Four properties make it a locator rather than a search.
+
+\emph{The header row is discovered, not assumed.} Leading descriptive text above a table
+does not defeat the locator, because the row that carries the declared column headers is
+found rather than fixed at the first row.
+
+\emph{Identification is by header text only.} No geometric alignment of $x$ and $y$
+positions is used, so moving a column leaves the locator valid. This is a deliberate
+narrowing: alignment is the spreadsheet analogue of matching a drawing entity by its
+coordinates, which the derivation prompt bans outright.
+
+\emph{Stacked blocks are scoped before anything else happens.} Many real sheets stack
+several blocks vertically, each introduced by a standalone label row and each repeating the
+same column headers. A section clause confines header discovery, row filtering and
+selection to one block. Without it a column header resolves against the first block's
+header row and a maximum sweeps every block, so the locator returns the right number from
+the wrong block --- and only breaks on the next customer's workbook.
+
+\emph{Sheet names are resolved across a set of files, and collisions fail loudly.} A rule
+document says ``the shipment detail sheet'', not ``the third upload'', so sheets from all
+source artifacts share one namespace. Two customers' workbooks both containing a sheet
+called \texttt{Sheet1} is entirely ordinary; that used to resolve to whichever file came
+later, with a warning nobody read, so the value came from the wrong workbook while every
+file involved looked perfectly normal. A locator that resolves to a colliding title now
+fails, a locator that names its artifact searches only that file, and a collision nothing
+looks up is not an error.
+
+Resolution returns the resolved sheet, cell, selection and match count, so what a locator
+did is reviewable rather than inferred; zero matches, an ambiguous match, and a missing
+sheet or column each return a structured error rather than a guess.
+
+\paragraph{Two shapes of block, not one.}
+The header-driven table above is one of the two shapes real forms use. The other is a
+key/value block --- a label in one column and its value in the next, continuing down the
+sheet --- which has no header row to discover and where the row's own label \emph{is} the
+key. It is supported as a distinct declaration rather than as a special case of the first,
+and the distinction reaches surprisingly deep: the ``is this row blank'' test that bounds an
+extent must consider the whole row for a header-driven table, because the noise that
+contaminates an extent lands wherever the form had space, and must consider a single column
+for a key/value block, because the label to its left belongs to a different field and a
+whole-row test reads past the end of the block.
+
+\paragraph{Status: implementation-backed on the source side; the label-proximity target
+mechanism is unexercised on both main carriers.}
+Everything above is exercised by both evaluation datasets. The related mechanism that
+locates a \emph{write} target by proximity to its caption is not: it is built on the
+non-agent derivation path, both main datasets take the agent path, and across the $33$
+specifications examined all $13$ label-geometry matches belong to three drawing
+specifications from an earlier phase of the project. Sections~\ref{sec:der:boundaries}
+(D3) states this as a boundary of what author-time verification has seen; the consequence
+here is a restriction on what this chapter may claim, and it is a narrow one: labeled-field
+target location is a case-study capability demonstrated on drawings, not a demonstrated
+capability on DOCX or XLSX.
 
 \subsection{Range Locators and Source-Side Aggregation}
 \label{sec:design:loc:range}
 
-% TODO 【寫作規格 2026-08-23 更新——原註記說「實作尚未開始」，那是錯的，
-%      而且方向是低估系統。ADR 0002 是 2026-08 以後每一份規格的地基，
-%      它的讀取端、顯式邊界、來源聚合與 evidence 都在 production path 上。
-%      照舊註記寫會把已完成的能力寫成未來工作。】
-%
-%      本小節要寫的是**一條演進線**，不是一個機制，因為每一步都是被實測逼出來的：
-%        1. ADR 0002（Accepted，G1–G4／G6 已實作；G5 是 benchmark case assertion）
-%           範圍定位器 ＋ 來源端聚合。約束：外延必須顯式宣告，不允許隱式整欄。
-%           難題是外延：明細第幾列到第幾列、含不含小計列、插列後還對不對。
-%           外延差一列會產生「有理有據但錯」的數字，是沉默失敗的教科書範例。
-%        2. ADR 0004／0005：把一段列壓成純量不夠——spec 只觸及模板 14 個明細列位的
-%           前 3 個，因為校準實例只有 3 筆。那不是 compile-once 是 compile-per-instance。
-%           修法是列投影 ＋ repeat 區塊 ＋ 具名外延 ＋ 多文件。
-%        3. ADR 0006：repeat 的欄只能直接讀一個來源欄，做不到逐列計算與跨檔查表。
-%           修法是**外延先解析成 row set**，逐列公式、join、合計都在那張表上做。
-%        4. ADR 0009：`{slot}` 既沒有起點也沒有間距，所以資料區不從第 1 列開始的
-%           工作表定不到位。修法是 slot_origin + records（group_size / row_role）。
-%        5. ADR 0010：兩個 row set 的等值合併。
-%      這條線本身就是論文的論述：**表達力邊界是被資料集逼著往外推的，不是設計出來的**。
-%
-%      表達力邊界（寫進 §3.9，不要在這裡展開）：等值合併不做 outer join、不做範圍型
-%      對應；聚合軸只有欄向；records 假設 group_size 固定；ADR 0008／0009／0010 的
-%      驗證基礎都是 n=1。
+Almost every business form contains a subtotal, a maximum, or a count. Expressing one
+requires a locator that denotes not a cell but \emph{a run of rows reduced to a value}, and
+that single change turns out to generate most of the interesting design in this thesis. The
+history is worth telling as a sequence rather than as a finished mechanism, because each
+step was forced by an observation rather than anticipated, and the sequence is itself the
+argument: \textbf{the expressiveness boundary of this IR was pushed outward by datasets, not
+designed in advance.}
+
+\paragraph{Step 1 --- the extent, and why it is the hard part.}
+A range locator adds to a single-cell locator a declaration of which rows it covers and how
+they are reduced. A single-cell locator asks ``which cell?''; a range also asks ``from which
+row to which row'' --- does it include the subtotal line, the notes row, the blank
+separator, and is it still right after next month's insert? An extent that is one row wrong
+produces a number that is plausible and wrong, which is precisely the failure this thesis
+exists to make impossible to miss.
+
+Three commitments follow. The extent is always \emph{declared}, never inferred: there is
+deliberately no whole-column form, and the one open-ended option must be explicitly marked
+unbounded so that it surfaces in review rather than at the next revision. The reduction
+refuses the three shapes that hide an error --- an extent that selected nothing, an extent
+containing a row whose text marks it as a total, and a blank or non-numeric cell inside a
+numeric aggregate. And the resolution records the rows it included \emph{and} the rows it
+excluded with a reason, so a reviewer who can see the extent can see the off-by-one row that
+a correct-looking total would otherwise hide.
+
+\paragraph{Step 2 --- a run of rows reduced to a scalar is not enough.}
+The first specification derived for the DOCX pair touched table rows one, two and three of a
+template with fourteen detail slots, because the calibration instance happened to have three
+detail lines and the agent wrote them out one by one. That is not compile-once; it is
+compile-per-instance, and the cause was not the prompt but the IR: a range could be collapsed
+into a scalar, and there was no way to say ``the $n$th slot takes the $n$th row of the
+extent''. The repair was a row projection --- a repeat block over a named extent, expanded
+into the template's fixed slots --- together with a specification scope of one instance's
+whole output set, so that two documents reading the same detail table cannot disagree about
+which rows it contains.
+
+\paragraph{Step 3 --- a repeat column that can only read one source column is not enough.}
+The next derivation produced a well-formed repeat block whose columns could each read a
+source column and nothing else, so a quantity that is ``per carton $\times$ cartons'', a unit
+price that must be looked up in a product master, and every total over the resulting values
+were all inexpressible. The agent diagnosed this itself in the specification it returned.
+The repair moved the evaluation stage: an extent is resolved \emph{once, into a table} of
+per-row namespaces; joins add columns from other artifacts; computed columns evaluate over
+that table in declaration order; and a field's aggregate reduces one of its columns.
+
+The decision worth recording is where the computed columns live. They belong to the
+\emph{extent}, not to the repeat block that displays it. Two of the DOCX rules are ``the
+packing list's quantity equals the invoice's quantity on the same line'' and ``both documents
+have the same number of lines, and line $n$ is the same part''. If each document's repeat
+computed its own quantity, those rules would be satisfied only by two formulas happening to
+agree, and a divergence would appear as two plausible numbers on two documents that nothing
+compares. One column, computed once and read by both, makes them agree structurally --- and
+it is also what allows a total to name \texttt{extent.column} at all, since a value computed
+inside a repeat exists in no table anything could aggregate.
+
+\paragraph{Step 4 --- a slot placeholder with neither an origin nor a stride.}
+The XLSX evaluation template put the data area at rows $6$ to $19$, two physical rows per
+logical record. The slot placeholder substituted the slot ordinal directly, so slots one, two
+and seven addressed rows one, two and seven: any sheet whose data area does not begin at the
+first row was unaddressable. The repair gives a block a \emph{layout} --- a slot origin, a
+group size, and named row roles with per-column offsets --- so that a slot's coordinate is
+computed rather than assumed. This defect survived a long time for a reason that is itself a
+finding: the only dataset that had ever used repeat blocks was the DOCX pair, whose detail
+slots begin at table row one by coincidence, so the XLSX repeat write path had never run on a
+real layout and no test could have been red.
+
+\paragraph{Step 5 --- two resolved tables that must be joined by key.}
+The monthly report pairs a project register against per-project audit results, and expressing
+that required an equality merge between two already-resolved row sets. Before it existed, the
+only way to pair two tables was to point two repeat blocks at the same slots --- an
+\emph{implicit positional merge} whose correctness depends on both sides having the same
+ordering \emph{and} the same membership. Removing the second of those, by changing one
+project number so that one side has a member the other does not, moved every audit figure down
+one row while both declared-count gates passed and every written cell remained a legal
+integer. That is why the merge exists and why a separate gate now refuses two blocks that
+share a slot range without a declared join.
+
+\paragraph{Status: implementation-backed at every step, each with the observation that forced
+it.}
+Steps 1 through 5 are all on the production path and all exercised by at least one evaluation
+dataset; the resolved-table representation is used by the derivation-time oracle as well as by
+execution, which is what gives a detail table any semantic check at all
+(Section~\ref{sec:der:oracles}). What this section deliberately does not claim is generality
+for the newest primitives: the boundaries of the resulting representation --- equality-only
+inner joins, a column-only aggregation axis, a fixed group size, and a verification basis of
+one real workflow each for the collection, record and merge primitives --- are stated in
+Section~\ref{sec:design:boundaries} as B2 to B5 rather than repeated here.
 
 \subsection{Failure Modes and What Each Mechanism Blocks}
 \label{sec:design:loc:coverage}
 
-% TODO 做成一張表，橫軸是第 2 章的失敗模式，縱軸是各機制。
-%      這張表證明設計不是拼湊出來的。
-% TODO 【現況要誠實寫】最近一次 derive 對映 31 條規則，21 條無法確認寫入位置，
-%      成因是語意的（target_not_found / target_ambiguous）。這個數字要嘛先修掉，
-%      要嘛作為 locator 機制現階段限制寫進 §3.9。不可以靜靜略過。
+Table~\ref{tab:design:blocks} maps the failure modes of Section~\ref{sec:rel:failures} onto
+the mechanisms of this chapter. Its purpose is to show that the mechanisms were selected
+against a taxonomy rather than accumulated, and equally to show where the taxonomy is
+covered by something other than a locator --- three of the six rows are not locator problems
+at all, which is itself the reason the locator mechanisms are not the whole method.
+
+\begin{table}[htbp]
+\centering
+\caption{Failure modes and the mechanism that is supposed to make each one loud.}
+\label{tab:design:blocks}
+\begin{tabular}{p{0.24\linewidth}p{0.38\linewidth}p{0.28\linewidth}}
+\hline
+\textbf{Failure mode} & \textbf{Mechanism} & \textbf{Residual} \\
+\hline
+Wrong value, right place & Author-time semantic oracle over the expected artifact; the
+resolved row set makes detail cells comparable & Only references whose text \emph{changed}
+between baseline and expected are compared (Section~\ref{sec:der:boundaries}, D4) \\
+Locator drift after a template revision & Structural fingerprint plus the publish gate;
+stable identities (defined name, bookmark, content control) preferred and positional
+references flagged & A change beyond the last content-bearing cell moves no fingerprint
+(Section~\ref{sec:design:drift}) \\
+Coverage shortfall --- a field no rule reaches, so the template default survives & Externally
+frozen rule-applicability manifest; every non-covered disposition is a publish gate & Coverage
+is a derivation diagnosis, not an execution correctness measure
+(Section~\ref{sec:der:coverage}) \\
+Format and unit error & Render formats in the IR; decimal half-up rounding
+(Section~\ref{sec:design:runtime}); presentation scored as its own channel & Only the rounding
+function has been audited for decimal semantics \\
+Negative-obligation violation --- what should be blank is not & Implied blanks derived from row
+roles, written rather than merely checked; explicit blank-target declarations & A target
+template that appears in no column is outside the derivation
+(Section~\ref{sec:design:boundaries}, B6) \\
+Extent error --- an aggregate covering one row too many or too few & Declared extents with the
+three refusals of Section~\ref{sec:design:loc:range}; recorded included and excluded rows;
+per-range attribution in the evaluator & A hypothesis is only distinguishable where the
+dataset made it so (Section~\ref{sec:eval:extentasymmetry}) \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Where the locators currently stand, measured.}
+An earlier draft of this section carried a locator failure rate from the drawing phase ---
+thirty-one mapped rules of which twenty-one had no confirmable write location. That number is
+obsolete and it flattered nothing: it predates every mechanism in
+Section~\ref{sec:design:loc:range} and both main carriers. The current measurements are the
+rule dispositions of the two best derivations. On the DOCX pair, $33$ of $34$ applicable rules
+are covered, $0$ rejected, $1$ unresolved. On the XLSX template, $23$ of $27$ are covered, $0$
+rejected, $4$ unresolved. The four unresolved on the XLSX template are informative because
+none of them is a locator failure: three are negative obligations --- rules whose content is
+``this must stay blank'' --- whose declarations the derivation could not verify against the
+expected artifact, and the fourth is a remarks column for which the specification declared no
+column anywhere, which the execution probe later confirmed produces silent failures.
+
+\paragraph{Status: implementation-backed for the mapping, normative for its completeness.}
+Every mechanism named in Table~\ref{tab:design:blocks} exists and is exercised, and every
+residual in the third column is measured and cross-referenced rather than asserted. What is
+normative is the claim that the six rows \emph{exhaust} the failure modes: the taxonomy comes
+from the literature and from this project's own incidents, and a mode nobody has hit is
+indistinguishable in this table from a mode that cannot occur. The bias direction is
+favourable to the method, and Section~\ref{sec:eval:threats} records it.
 
 \section{Target Reference and Write-Back}
 \label{sec:design:targets}
 
-% TODO docx（bookmark / content control）、xlsx（具名範圍 / 座標）、dwg（handle）
-%      三種目標參照的統一契約，以及各自的可寫入性判定。
+A target reference answers ``where does this field write?''. All three carriers offer a
+stable, author-declared identity and a positional fallback, and the design decision is to
+support both while making the difference visible rather than to support only the safe one:
+
+\begin{itemize}
+  \item \textbf{Drawing:} an entity handle, an opaque identity the drawing itself maintains
+    across edits.
+  \item \textbf{Word:} a content-control tag or a bookmark name --- stable, author-declared,
+    document-global --- and, positionally, a table cell addressed by part, table, row and
+    column, or an underscore blank addressed by paragraph and index.
+  \item \textbf{Excel:} a defined name --- the exact analogue of a handle, since Excel
+    maintains it across inserts --- and, positionally, a sheet and coordinate.
+\end{itemize}
+
+Refusing the positional forms would mean refusing most real templates. Measured on a genuine
+forwarder commercial invoice, the three stable forms addressed the line-item table and nothing
+else: all eleven header fields produced zero targets, plainly visible in the text dump and
+unwritable. So positional references are supported and flagged \texttt{positional}, and a
+reviewer can see which targets will not survive a row insert instead of discovering it at the
+next revision. The captioned blank is flagged \texttt{volatile} in addition, because filling
+one blank renumbers the others on the same line.
+
+\paragraph{Verification and addressability are two questions.}
+``Does something exist at this reference?'' and ``can something be written at this reference?''
+coincide for a handle, a bookmark and even an empty Word table cell, which exists in the XML
+regardless. They do not coincide for a spreadsheet cell, which denotes a position that exists
+whenever its sheet does and whose normal state in a template is blank. Collapsing them made a
+\emph{correct} seven-slot repeat block on the real monthly-report template report $41$ of its
+$42$ cells as unwritable, and the only way to satisfy the check would have been to point the
+block at cells that already had content. The two questions are therefore two methods, with
+addressability defaulting to verification for every format that does not override it. What the
+spreadsheet override still catches is the failure that matters at block scale --- a wrong sheet
+name, after which every slot lands nowhere and no value-level check sees it. What it cannot
+catch is a wrong column or a shifted row; neither can the writer, which writes them happily, so
+no check on this dump ever could, and that gap is closed by comparing against the references the
+expected document changed.
+
+\paragraph{Writing back a volatile reference requires a second reading.}
+Filling the blanks in a Word template destroys the references that named them: the survivors
+renumber, so the produced document answers the original reference confidently with a different
+field. Discarding the produced document's own volatile references and re-reading them by
+paragraph coordinates is therefore not an optimization but a correctness requirement --- and
+the coordinate chosen is the paragraph ordinal plus that paragraph's literal text, because
+those are the only two things both writers preserve. A produced document whose paragraph
+numbering differs from the template's leaves every volatile reference unresolved rather than
+resolvable-but-shifted, which keeps the failure loud.
+
+\paragraph{Locating a target is the first of three layers, not the whole problem.}
+It is tempting to treat ``the reference resolves'' as the criterion for a correct write. It is
+the first of three, and this project has been wrong at each of the other two.
+
+\begin{enumerate}
+  \item \textbf{Can the coordinate be found?} This is what target location and addressability
+    answer. Section~\ref{sec:der:boundaries} (D1, D2) records what the author-time side of this
+    layer can and cannot see --- in particular that an expected output supplies candidate
+    coordinates that introspection alone does not, and that the Word blank locator is a
+    pilot-supported volatile mechanism rather than a general one.
+  \item \textbf{Does the write preserve the package?} A correct value in a correct cell is
+    still a failed run if the file that comes out has lost the parts that make it the form.
+    Writing through a spreadsheet library's save re-serializes the library's own model of a
+    workbook, so every part the library has no model for is simply absent from the output. On
+    the real monthly-report template that is the drawing part holding the ruled boxes and
+    stamps, and the printer-settings part holding the one-page layout a filed form must keep.
+    The repair replaces the writer with a package editor: open the original archive, rewrite
+    only the one worksheet part that has to change, and copy every other part through byte for
+    byte, while the spreadsheet library stays in place answering only \emph{where} to write,
+    since merged-range anchors, defined names, data validations and conflicting references all
+    need a spreadsheet model. Measured on five calibration and development instances, the
+    package-integrity channel moved from $0/5$ to $5/5$, and after one write the only changed
+    part is the worksheet.
+  \item \textbf{Does the produced document actually say what was planned?} The compiler knows
+    exactly which references it will write and with what text, so the produced artifact is
+    checked against that plan --- every planned reference holds the planned text, and nothing
+    unplanned changed. The last clause is the one that matters, and it cannot be established
+    from the output alone; it needs the baseline to diff against.
+\end{enumerate}
+
+The three layers are independent, and the middle one is worth a sentence of its own because it
+is the only one whose failure was invisible to the evaluation rather than merely undetected:
+the benchmark's package-integrity channel injects its fault by performing exactly one
+spreadsheet-library round trip, so while the system under test wrote through the same library,
+a correct run and a deliberately broken one produced the same class of file and neither $5/5$
+nor $0/5$ was evidence about anything. The acceptance criterion for the repair was therefore
+written as ``the two are distinguishable'' --- the clean output must score full marks and a
+deliberately round-tripped copy of the same output must score zero --- rather than as ``the
+broken one scores lower''.
+
+\paragraph{Status: implementation-backed, with two residuals named.}
+The adapter protocol, the addressability split, the volatile rebinding and the package editor
+are all in the production path, and each has a negative control that makes its own guard fail
+when disabled. Two residuals: the package editor covers XLSX only, and the Word layout parts
+have not been enumerated the same way, which matters because the DOCX pair is the only DOCX
+evaluation dataset (Section~\ref{sec:eval:threats}). And the package editor does not decide
+what \emph{may} be written --- preserving every part does not make a value written into the
+wrong column any less legal.
 
 \section{Deterministic Compiler and Zero-LLM Runtime}
 \label{sec:design:runtime}
 
-% TODO spec -> 可執行計畫；錯誤在編譯期而非執行期爆。受限 AST 求值。
-% TODO value layer：實例輸入的驗證與型別。
-%
-% TODO ★ 論文級紅線，寫死在這一節 ★
-%      執行期不得有 LLM fallback。related-work v1 審查判定 C4（zero-LLM execution）
-%      是唯一乾淨的 claim，所以這不是實作偏好而是命題的必要條件。
-%      具體推論：locator 定位失敗時必須失敗並回報，
-%      不可以「叫 LLM 猜一個」來降低 §3.5.3 那個失敗率。
+The compiler turns a published specification plus one instance's inputs into an executable
+write plan and a content hash of it, and returns failures \emph{before} anything is submitted.
+Its two design commitments are that errors surface at compile time rather than during
+execution, and that evaluation is restricted enough to be auditable.
 
+\paragraph{A restricted expression language, not a sandboxed one.}
+Formulas are parsed to an abstract syntax tree and evaluated by an interpreter that accepts a
+closed list of node types: literals of string, number and boolean; names; the arithmetic and
+comparison operators; a conditional expression; and calls to a fixed function table
+(\texttt{min}, \texttt{max}, \texttt{round}, \texttt{abs}, \texttt{sum}, \texttt{avg},
+\texttt{count}, \texttt{count\_nonblank}). Everything else --- attribute access, subscripting,
+comprehensions, keyword arguments, assignment --- reaches a final clause that raises with the
+offending node type named. A name the context does not provide is an error rather than an
+empty value, which is what makes it possible for the derivation's trial compile to catch a
+formula referencing something nothing produces; that check is the single most productive
+author-time gate in Chapter~\ref{ch:method}, and it is only possible because the language is
+small enough to have no fallback.
+
+\paragraph{Rounding: the rule says one thing and the language does another.}
+Every rule document in both datasets says ``round half up''. The implementation initially used
+the host language's built-in rounding, which is round-half-to-even, and the diagnosis
+``switch the rounding mode'' was wrong --- following it would not have fixed the defect. The
+measured case is a volumetric weight, $35 \times 25 \times 20 \times 3 \div 10^{6}$, which the
+rule, the spreadsheet, and a human all read as the decimal literal $0.0525$ and round to
+$0.053$. As a binary double its exact value is $0.05249999\ldots$, which is not a tie at all,
+so half-up rounding applied to that value still returns $0.052$. The value has to be pulled
+back to the shortest decimal literal that round-trips to the same double before the digit the
+rule talks about exists to be rounded; only then does half-up quantization give the answer the
+rule specifies. The repair therefore has two steps, not one, and it disposes of the whole
+family of cases usually written off as needing arbitrary-precision arithmetic throughout.
+
+The reason this earns a paragraph in a thesis rather than a line in a changelog is that it is a
+perfect specimen of the primary risk. Both $0.052$ and $0.053$ are entirely normal-looking
+figures --- right unit, right precision, right format --- and every gate in the system passed
+them. Sweeping the DOCX dataset's $79$ detail rows found three disagreements, all volumetric
+weight, and one of them is in an \emph{evaluation} instance. Left unfixed, a rounding-mode
+defect in the host language would have been recorded as an error of the method and would have
+contaminated the main result table.
+
+\paragraph{Human input at execution time: available, and deliberately disabled.}
+A field may in principle take its value from a person at execution time. This does not call a
+model and therefore does not violate the zero-LLM claim, and it is a reasonable capability for
+a real system, so the code remains. It is disabled at derivation time for a reason of
+\emph{evaluation validity}: derivation defines such a field as the residual --- text that
+changed and that no source value explains --- so allowing it would let the arm being scored
+decide which fields it is not responsible for. That is the same error shape as letting the
+scored agent enumerate its own coverage denominator, and it is asymmetric across arms, since a
+per-instance agent has no such escape hatch and simply has to produce a value. The closure is
+placed at derivation rather than at execution on purpose: closing it at execution broke $34$
+tests, because the twenty-one stored drawing specifications are built on runtime parameters,
+and that would have confused ``this thesis's evaluation does not credit human input'' with
+``this system does not support human input''. Reopening it is an evaluation change before it is
+a code change: the input manifest would have to declare per field which values are
+human-supplied, and all three arms would have to receive the identical strings.
+
+\paragraph{The zero-LLM red line.}
+Execution must contain no model fallback: a target that cannot be located must fail and be
+reported, never be guessed. That requirement, the removal of the execution-time repair branch,
+and the negative-control test that pins it are stated in Section~\ref{sec:design:compile-once}
+and are not restated here. What belongs in this section is the consequence for the compiler:
+because there is no fallback, every failure mode has to be expressible as a compile-time
+refusal with a code, which is why the error vocabulary of Section~\ref{sec:design:failloud} is
+as large as it is. A smaller vocabulary would not mean a simpler system; it would mean a system
+that continues past conditions it cannot name.
+
+\paragraph{Status: implementation-backed.}
+The compiler is a pure function of specification, source data, runtime parameters and current
+template values, and the canonical job it emits is content-hashed, so identical inputs are
+recognisably the same compiled work. The restricted evaluator, the two-step rounding and the
+derivation-time closure of human input are each pinned by tests, and the rounding repair
+carries a negative control on the specific measured case. Two limits are worth stating: the
+decimal audit covers the rounding function only, and no other numeric function has been checked
+for decimal semantics; and content-hash equality establishes that two runs compiled the same
+work, not that the produced files are byte-identical, which is a separate check
+(Section~\ref{sec:eval:reruns}).
 \section{Lifecycle Management}
 \label{sec:design:lifecycle}
+
+A specification that is correct once is a demonstration. A specification that stays correct
+across template revisions, is reviewable when it changes, and can be traced from a delivered
+file back to the exact program that produced it is an artifact an engineering process can
+accept. This section describes the four mechanisms that make the difference, and it is where
+the thesis's governance argument against per-instance agents is grounded --- not in a claim
+about regulation, which this thesis does not make, but in traceability, reproducibility and
+change control, which are properties one can point at.
 
 \subsection{Lineage and Versioning}
 \label{sec:design:lineage}
 
-% TODO spec 版本、產出版本、輸入版本三者的可追溯關係。
+Three identities are tracked and related.
+
+A \emph{template lineage} is the family of revisions of one customer template, and it carries
+the current structural fingerprint of each document role it covers. A \emph{specification}
+belongs to a lineage, carries a version number unique within it, and records the fingerprint of
+each template role it was derived against --- one per role, because a specification produces an
+instance rather than a file, so the packing list's template drifting invalidates it even though
+the invoice's targets are untouched. A \emph{production version} freezes one approved
+specification together with the compiled artifact and its content hash; those four fields are
+immutable after creation and the model refuses to save a change to them, so only activation and
+rollback may move. An \emph{execution run} then references its production version, the exact
+compiled artifact it submitted, and a unique correlation identifier.
+
+The result is a three-way trace in both directions: from a delivered file to the run, from the
+run to the compiled program and its hash, and from the hash to the specification version and the
+template fingerprints it assumed. The published program's identity hash is computed over the
+field map, the rule projections and the runtime parameter schema, deliberately excluding runtime
+values, so ``the same program'' and ``the same inputs'' remain separate questions.
 
 \subsection{Regression Suite}
 \label{sec:design:regression}
 
-% TODO 每次 spec 變更自動重跑全部案例。
+Regression cases belong to the lineage rather than to a specification version, so a new
+derivation is judged against the same cases as the old one. Each case pins its own input
+template, source artifacts, source-data override and runtime parameters, and optionally an
+approved expected output. A run compiles the specification against the case's inputs, executes
+it, and checks the result twice: against the compiler's \emph{plan} --- every planned reference
+holds the planned text and nothing unplanned changed --- and, when the case has one, against the
+approved expected document as a stricter full-text comparison.
+
+The plan check is the load-bearing half, and it is available for every case including those with
+no approved output. It is also what pairs with the fingerprint: the fingerprint deliberately
+excludes text, so a caption renamed in place with the same structure does not move it, and the
+regression's expected comparison is what catches exactly that. The two compose --- structural
+drift is caught by the fingerprint, semantic drift by regression --- and a failing regression
+blocks publication.
 
 \subsection{Drift Detection}
 \label{sec:design:drift}
 
-% TODO 模板改版時如何被發現、如何定位、如何最小化重新推導範圍。
-%      fingerprint 對 docx dump 已驗證可用（文字改 -> 指紋不變、bookmark 改名 -> 指紋變）。
-% TODO 【已知缺陷，修掉或寫出來】drift 目前只讀 target.handles 不讀通用的 targets，
-%      一旦有 spec 使用通用 refs，漂移偵測會直接瞎掉。
+The fingerprint is a stable hash over a template's \emph{structure}: which references exist and,
+for each, its type, its layer, and its attribute tag where it has one. Text is deliberately
+excluded, because text is the payload the pipeline exists to rewrite --- folding it into the
+identity would churn the fingerprint on every production run and invalidate every specification
+for no structural reason --- and because no reliable rule distinguishes a static caption from a
+value by content alone. Geometry and dump ordering are excluded for the same class of reason.
+
+\paragraph{Measured on both main carriers, because it had only been tested on synthetic drawing
+dumps.}
+The fingerprint's unit tests feed it hand-built entity lists in the drawing shape, so whether it
+discriminates on a real document was an assumption. Measuring it on the two evaluation templates
+gives Table~\ref{tab:design:fingerprint}. The controls matter as much as the positives: a
+library round trip with no edit at all must not move the fingerprint, or the mechanism would
+report drift every time anything opened the file.
+
+\begin{table}[htbp]
+\centering
+\caption{Structural fingerprint on the two evaluation templates.}
+\label{tab:design:fingerprint}
+\begin{tabular}{p{0.42\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\hline
+\textbf{Perturbation} & \textbf{XLSX (27 refs)} & \textbf{DOCX (92 refs)} \\
+\hline
+Library round trip, no edit (control) & unchanged & unchanged \\
+Caption text edited in place & unchanged & unchanged \\
+Row / paragraph inserted inside the form & \textbf{changed} & \textbf{changed} \\
+Row appended past the last content-bearing cell & unchanged & --- \\
+\hline
+\end{tabular}
+\end{table}
+
+The last row is the honest one. On a spreadsheet the fingerprint is a hash over the cells that
+carry content, because a blank cell is not a target; a template edit that displaces none of them
+is therefore invisible to it. On the monthly-report template that means everything below row
+$25$. This is a genuine boundary rather than a bug: the alternative --- hashing the declared
+sheet dimension --- would move the fingerprint whenever a cell that once held a value was
+cleared, since the dimension stays inflated long after the value is gone.
+
+\paragraph{A skeleton-level claim this measurement retired.}
+An earlier note in this chapter's outline asserted that drift detection ``goes blind the moment
+a specification uses generic target references'', on the grounds that the diff function reads the
+drawing-flavoured spelling of a target and not the neutral list. Measured across all $35$ stored
+specifications --- $585$ fields, $582$ target references --- the diff function sees $582$ of $582$,
+and \emph{no} stored specification uses the generic spelling. The published contract, moreover,
+closes the target object to additional properties, so a specification using it would be
+contract-invalid: the branch is unreachable for any specification the contract admits. The claim
+was therefore not so much wrong as untested and pointed at the wrong risk, and the accurate
+statement is narrower and duller: drift compares fields and repeat blocks, both of which it
+covers completely, and the neutral spelling is a capability of the reader rather than a shape
+anything currently produces.
+
+What the same audit \emph{did} find is one unit the diff does not compare at all: a document's
+blank-target declarations. Two specification versions that differ only in whether a reference is
+claimed as deliberately blank produce an empty structural diff, so a reviewer reading the change
+sees nothing. The consequence is bounded --- such a declaration changes no write, and dropping
+one sends its rule back to blocking the publish through a different gate --- so this is recorded
+as a stated boundary with an entry naming the rejected alternative, rather than as an
+implementation task ahead of the writing this chapter blocks.
 
 \subsection{Auditability}
 \label{sec:design:audit}
 
-% TODO 為什麼這個架構能被工程流程接受，而 agent-per-instance 不能。
-%      措辭注意：用 traceability / reproducibility / change control，
-%      不要宣稱「法規要求 deterministic output」（找不到學術來源）。
+Publication is where every mechanism in this chapter is cashed in, and its structure encodes one
+distinction: which refusals a human may take responsibility for, and which nobody may.
+
+Not overridable: a specification with no fields; a specification failing schema validation; a
+specification whose declared document roles do not match its dataset's; a specification that did
+not pass its derivation-time trial compile; and a specification for a multi-document lineage in
+which some template role has never been fingerprinted. The reasoning differs per item and is
+worth separating. ``This does not compile'' is not a judgement call --- every run of it fails at
+the first step, so publishing can only produce a production version that never executes.
+``Nobody ever fingerprinted this template'' is refused because it is indistinguishable in the
+data from ``no template drifted'', and publishing on the second reading means publishing with
+drift detection switched off for that document.
+
+Overridable, with a price: the merged unresolved set, a stale template fingerprint, a failing
+regression run, and a missing review. A forced publish requires a written reason, and the reason,
+the operator, the exact list of gates waived, and the timestamp are recorded permanently on the
+production version and surfaced as a standing warning. The design intent is that overriding is
+possible --- a process that cannot be overridden is worked around --- but never quiet.
+
+\paragraph{The merged unresolved set, and the two counters that disagreed.}
+Everything unresolved is merged into one canonical set: items the agent could not resolve,
+changes in the expected document nothing accounts for, unresolved rule targets, source values
+whose locator failed or disagreed with the derivation sample, and specification fields carrying
+no verified target. One property of that merge is worth stating here because it is a general
+lesson about evidence rather than a detail. The cells a repeat block writes are routed into the
+``unexplained changes'' list on purpose, because that is where the derivation-time oracle reads
+expected text from and it is the only way a detail table gets a semantic check at all. The
+publish gate reads the same list to answer a different question --- ``did anything account for
+this change?'' --- and for those cells the answer is yes, the block owns the address. Until that
+was separated, a \emph{correct} specification carried dozens of spurious blocking items, and no
+test turned red because what changed was a count. The ownership set is recomputed from the field
+map rather than read from a tag in the evidence, so a later version that drops the block sends
+the same cell back to blocking.
+
+The measured state of the two best specifications is $13$ blocking items on the XLSX template
+and $8$ on the DOCX pair, against $13$ and $14$ respectively in the agent's own unresolved list.
+The two counters therefore agree on one specification and differ by six on the other, and before
+the repeat-cell separation above they differed the other way, by $34$ and $19$. Every narrative
+of ``$N$ unresolved'' in this project's records counted the agent's list; the merged set is the
+one that decides publication.
+Section~\ref{sec:der:evidence} draws the methodological rule: any unresolved count must be
+decomposed before it is interpreted, because ``the gate is too strict'' and ``the gate is doing
+its job'' call for opposite repairs.
+
+\paragraph{Status: implementation-backed, with the governance claim scoped.}
+Immutability of a published version is enforced at the model, the gate ordering and the
+forceable set are one pure function testable in isolation, the force audit is persisted, and the
+fingerprint behaviour in Table~\ref{tab:design:fingerprint} is measured on the real evaluation
+templates rather than on fixtures. The scoped part is the argument this section supports: the
+claim is that this architecture supplies traceability, reproducibility and change control, and
+that a per-instance agent supplies none of the three because there is no versioned program to
+trace, no compiled artifact to hash, and no diff to review. The claim is \emph{not} that any
+standard or regulation requires deterministic output; no such source is cited, and
+Section~\ref{sec:rel:governance} states the requirement in those three words instead.
 
 \section{Expressiveness Boundary}
 \label{sec:design:boundary}
 
-% TODO 老實寫現階段表達不了的東西，這是第 6 章 future work 的來源：
-%      - 寫入端不定長度明細（來源 7 筆就插 7 列）—— 插列會讓所有 positional ref 位移，
-%        連動目標轉接器、比對、清空、fingerprint、drift。
-%        替代形狀是「模板固定上限明細列位，未用列必須清空」，
-%        而這正好把 negative obligation 變成一等公民
-%      - 需要跨文件推理而非查表的欄位
-%      - 【§3.5.3 的 locator 失敗率若沒修掉，也要寫進這裡】
+This chapter has stated boundaries in three different places, which is a hazard rather than
+thoroughness: a reader who meets a limitation twice in different words cannot tell whether it is
+one limitation or two. This section therefore does two things --- it says where each kind of
+boundary lives, and it states the one boundary that belongs to none of the other lists.
+
+\paragraph{Division of labour.}
+Section~\ref{sec:design:boundaries} (B1--B7) states what the \emph{representation} can express:
+row-content predicates, fixed group sizes, equality-only inner joins, a column-only aggregation
+axis, what a repeat block clears, and the $n=1$ verification basis of the newest primitives.
+Section~\ref{sec:der:boundaries} (D1--D6) states what \emph{author-time verification} can see:
+which coordinates introspection alone yields, which locators are pilot-supported, which
+mechanism has never executed on a main carrier, which cells the semantic oracle compares, and
+what the shared evaluator is not. The two are different questions and must not be merged --- ``a
+merge does not do outer joins'' and ``the oracle cannot see a cell that is blank on both sides''
+are not the same kind of statement, and a combined list would invite a reader to treat them as
+interchangeable. The present section holds what is neither: boundaries of \emph{execution and
+lifecycle}, which is to say things the IR can express and the derivation can verify but the
+running system still cannot promise.
+
+\paragraph{E1 --- variable-length write-side detail.}
+Reading is unbounded in the number of rows; writing is not. An instance with seven detail lines
+does not cause seven rows to be inserted into the template. The asymmetry is deliberate and the
+argument is blast radius: the read side is confined to two pure modules that take bytes and
+return values, while inserting rows on the write side reaches the target adapters (reflowing
+formats, merged ranges, formula references), the comparison logic (two documents with different
+row counts), the blanking logic, the structural fingerprint, and drift --- and, worse, it shifts
+every positional reference, which means deliberately breaking the thing the system itself flags
+as fragile. The accepted alternative shape is a template with a fixed number of detail slots of
+which an instance uses some, the rest of which must be cleared.
+
+That alternative was recorded as a limitation, and it is worth stating plainly that it is no
+longer only that. The clause ``the unused slots must be cleared'' turns a negative obligation
+into a first-class construct, and both halves of that are now implemented: the blanks implied by
+a record's row roles are \emph{written} rather than merely checked --- checking alone would make
+compliance a property of the template's pristine state rather than of the specification --- and a
+document may additionally declare references it deliberately does not write, subject to the three
+checks of Section~\ref{sec:design:ir}. So the residual boundary is narrower than the original
+statement: what remains unexpressible is a template whose row count is a function of the instance,
+not the negative obligation that the fixed-slot alternative brings with it.
+
+\paragraph{E2 --- fields requiring cross-document reasoning rather than lookup.}
+A value that must be inferred from prose in another document, rather than read from a structured
+source and transformed, is outside the method by construction --- this is condition C-II of
+Section~\ref{sec:design:scope} viewed from the implementation side rather than from the admission
+side. Nothing here degrades gracefully into it: there is no execution-time model to fall back on,
+which is exactly the point of the zero-LLM claim.
+
+\paragraph{E3 --- carrier fidelity bounds what any of this can promise.}
+Two limits established earlier in this chapter are properties of the file formats and their
+libraries rather than of the method, and they bound its guarantees anyway: a spreadsheet dump
+enumerates only cells that carry content (Section~\ref{sec:design:dump}), and a structural
+fingerprint therefore cannot see a change beyond the last such cell
+(Section~\ref{sec:design:drift}). The package-preserving writer closes the corresponding
+\emph{write}-side limit for XLSX and does not close it for DOCX, whose layout parts have not been
+enumerated (Section~\ref{sec:design:targets}).
+
+\paragraph{Status: E1 and E3 implementation-backed as boundaries; E2 definitional.}
+E1's asymmetry is a design decision with the coupling argument recorded, and the negative-obligation
+half of its alternative shape is implemented and measured rather than promised; E3's two halves are
+each a measurement reported above. E2 is a restatement of an admission condition and carries no
+evidence, by construction. All three feed Section~\ref{sec:concl:future}, which develops them as
+future work rather than inventing new ones.
