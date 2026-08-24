@@ -183,22 +183,264 @@ level, with the bias direction stated.}
 \subsection{Dataset Construction}
 \label{sec:eval:dataset}
 
-% TODO 每個案例由人工撰寫的 generator 產生三樣：input.* / expected.* / ground\_truth.json
-%      期望值必須從規則文件算出來，不得由受測系統產生——否則比對是循環論證。
-% TODO 案例之間明細列數必須不同（3/7/15/40），且至少一個案例帶污染列。
-%      否則外延規則根本沒被測到，一份寫死 D5:D19 的規格會全過。（ADR 0002 §4.1）
-%
-% TODO 標註規則已定案（2026-08-15），權威是 docs/thesis/annotation-manual-v1.md
-%      ＋ 兩份 JSON Schema。這一節要寫的是它的兩層結構與為什麼是兩層：
-%      每模板一份判準（manifest）、每實例一份值（ground\_truth）。
-%      理由不是美觀而是一致性——24 個實例各自重複一次判準，任何一次抄漏都會讓
-%      兩個實例用不同標準判分，而那種不一致在主結果表上看起來會像方法的差異。
-% TODO 五種必要能力（協定原本列四種，標註定案時補上第五種）：
-%      數值容差與格式、negative obligation、範圍外延（逐列列出而非只給起訖）、
-%      semantic/presentation 雙層、以及 untouched（沒有任何欄位宣告的位置被動到）。
-%      第五種的理由要寫：四種全滿足卻把模板其他地方清空的輸出仍可拿滿分。
-% TODO 資料集約束再加一條：每個 aggregate 欄位必須配一個獨立的交叉驗證欄位，
-%      理由見 §5.5——外延診斷只有 Arm C 宣告得出來，交叉驗證是唯一三個 arm 對等的偵測手段。
+% 2026-08-24 動筆。原 % TODO 的五塊註記逐條查證，三處要改，方向都是「照抄會把一條
+% 已知的例外寫成普遍成立」：
+% (1) 「五種必要能力」是 2026-08-15 的計數。refusal（標註手冊 §4.6b）是之後才定案的，
+%     它不在那五種裡，而 ground-truth schema 對它有結構性強制。實際是六種。
+% (2) 「每個 aggregate 欄位必須配一個獨立的交叉驗證欄位」——X1 一條 cross_check 都沒有，
+%     而且共用 evaluator 從頭到尾沒有讀過那個鍵（grep benchmark/evaluator：0 筆）。
+% (3) 「generator 與 production compiler/adapter 獨立」在 ADR 0012 之後的正確說法是
+%     「期望值不得由 production 程式碼產生」，不是「不得 import」——X1 的 validate.py
+%     刻意 import source_locator 當可讀性探針，並明寫它不餵任何期望值。
+% 本節是 S5 的驗收條件，不是 S4／X1 的描述。每一條約束都附上兩份既有資料集的檢查結果。
+
+This subsection states what an evaluation dataset must satisfy, as conditions that can be
+checked before the dataset is used rather than as a description of the two that exist. The
+ordering is deliberate: the third template is not yet built, and this list is its acceptance
+criteria.
+
+That ordering also guards against a specific failure of this kind of writing. A constraint
+written after the artifacts it governs tends to be satisfied by construction, and a constraint
+that nothing has ever violated has not been shown to carry any force. Every condition below is
+therefore reported together with the result of checking it against both built datasets, and
+two of the conditions are not satisfied.
+
+\paragraph{Three artifacts per case, and the direction in which they are derived.}
+Each case is produced by a hand-written generator that emits an input set, an expected
+artifact, and a structured ground truth. The expected values are computed from the rule
+document and the source data. They may never be produced by the system under test: an expected
+artifact manufactured by the production compiler would make the comparison circular and
+structurally incapable of failing.
+
+The checkable form of that red line is narrower than ``the generator shares no code with the
+product'', and the narrower form is the correct one. Neither built generator imports anything
+from the product: both draw only on the standard library, the two document libraries, and
+their own local modules. But the XLSX validator does import the product's source locator, on
+purpose, to check that the generated inspection sheets are machine-readable at all --- and it
+labels that import as a readability probe whose output feeds no expected value. The condition
+is accordingly stated as \emph{no expected value may be produced by product code}, with a
+product import admissible only where nothing it returns reaches the ground truth.
+
+Independence also has to be substantive rather than nominal, and here the two datasets give a
+positive demonstration rather than an assurance. The DOCX oracle rewrites paragraph text at the
+string layer, where the product's adapter splits and rewrites runs; the two agree on nothing
+except the observation that three or more consecutive underscores mark a blank, which is a
+property of the template rather than of either implementation. The XLSX oracle edits the one
+worksheet part directly inside the package, where the product --- before the change described
+in Section~\ref{sec:eval:channels} --- rewrote the whole workbook through a spreadsheet model.
+The consequence was measurable, and it is the second reason the oracles are separate: a
+round trip through that spreadsheet library drops \texttt{xl/drawings} and
+\texttt{xl/printerSettings} from every one of six real government workbooks, so an oracle built
+on it would have failed the package-integrity channel itself, and the channel would then have
+been measuring the benchmark instead of the arm. A correct answer has to be able to reach every
+channel that is scored.
+
+\paragraph{Two levels of annotation, and why the split is a correctness measure.}
+Annotation is split into one manifest per template, holding every judgement about what counts
+as correct, and one ground truth per instance, holding only values and the record of how they
+were checked. The reason is not tidiness. Twenty-eight instances each repeating the same
+judgements is twenty-eight opportunities for two instances to be scored against different
+standards, and an inconsistency of that kind appears on the main results table as a difference
+between methods. Deciding once and referring to the decision removes the possibility rather
+than reducing it.
+
+The scale the split manages is easy to understate. The DOCX manifest declares 28 scalar fields
+and three slot groups covering 154 slot cells; the XLSX manifest declares four scalars and two
+slot groups covering, coincidentally, also 154 slot cells. Expanding those into per-cell
+annotations on every instance would produce several thousand hand-written entries, and a
+slot-group declaration --- a location pattern, a column list, a slot count, and an obligation
+for unused slots --- replaces all of one group's entries with one.
+
+One procedural rule keeps the split from silently absorbing errors: an annotator may not
+adjudicate anything the rule document does not state. The prescribed response to an ambiguity
+is to amend the rule document, record the amendment in the manifest's notes, and regenerate.
+This is not hypothetical bookkeeping. Building the DOCX dataset found three statements in its
+rule document that did not match the real form, one of them naming a position that does not
+exist, all found by diffing the rules against a structural dump of the template rather than by
+reading. Settling such a case inside the annotation instead would make the benchmark a test of
+guessing what the rule author meant, and the three arms do not have equal access to that
+knowledge.
+
+\paragraph{Condition 1 --- the aggregated set must vary in size, and one case must contain a
+member the correct extent excludes.}
+If every case aggregates the same number of records, a specification that hard-codes an
+absolute row range passes the entire suite, and the extent machinery is never exercised. The
+condition therefore has two halves: the cardinality of the aggregated set differs across cases,
+and at least one case --- not the earliest --- carries a member that the correct extent must
+leave out.
+
+The DOCX dataset satisfies both. Its detail extents run 3, 6, 9, 8, 14, 2, 14 and 5 records
+across the eight non-refusal cases, and four of those cases carry excluded rows classified as
+blank or note, with the three calibration cases deliberately clean so that contamination first
+appears where an arm cannot have tuned on it.
+
+The XLSX dataset satisfies the first half at a different level and does not satisfy the second
+at any level. Its declared extent is rows 8 through 60 of an inspection sheet --- 53 rows,
+identical in all ten instances, with zero excluded rows in every one, because the real form
+fixes the checklist length. What varies is the number of source artifacts aggregated, from four
+to ten inspection sheets per case. That is a genuine instance of the same constraint one level
+up, and it is why the condition is stated over ``the aggregated set'' rather than over rows;
+but no case in that dataset contains a member the correct extent must exclude. The substitute
+is described under Condition 3, and it is not equivalent.
+
+\paragraph{Condition 2 --- every declared wrong-extent hypothesis must be distinguishable on at
+least one sealed instance.}
+``The cases must be well designed'' is a wish until it is an assertion a program can evaluate.
+The mechanism is that the manifest declares, for each extent, the specific ways of getting it
+wrong that could plausibly occur there --- a hard-coded row range, stopping at the first blank
+row, taking the last non-empty value, taking the whole column, swallowing a subtotal row,
+swallowing a note row --- and the generator computes what each of those would have produced on
+each instance and records whether the result differs from the correct one. A dataset is
+complete only when every declared hypothesis is distinguishable on at least one sealed
+instance.
+
+Both datasets satisfy this, and both satisfy it with a margin of exactly one. In the DOCX
+dataset six hypotheses are declared, and \texttt{note\_row\_included} is distinguishable on one
+evaluation instance only. In the XLSX dataset five are declared, and \texttt{hardcoded\_rows}
+is distinguishable on one evaluation instance only. A margin of one is not comfortable, and it
+is recorded rather than smoothed: removing a single sealed instance from either dataset would
+silently reduce its extent coverage.
+
+The condition has a negative half that binds equally. A hypothesis that can never be
+distinguished must not be declared, because declaring it claims a coverage the dataset does not
+have. The XLSX dataset deliberately omits \texttt{note\_row\_included} for that reason: a
+pure-annotation row on its source form contributes zero to every field the target form reports,
+so no scored field could move. The omission is recorded in the dataset's own documentation
+together with the argument, which is the form in which a negative decision stays auditable.
+
+Condition 2 is also where dataset design touches this thesis's primary metric most directly. In
+the DOCX dataset, four of the six declared hypotheses leave all six totals byte-identical,
+because the totals row and the note row have empty quantity cells and absorbing them changes no
+sum. The only signal that anything went wrong is that one extra detail slot is occupied. That
+is precisely the silent-failure shape the thesis is about: every number in the document is
+correct and the document is still wrong, and no amount of checking the arithmetic finds it.
+
+\paragraph{Condition 3 --- every aggregate needs a detector computed from the output alone, and
+one of the two datasets has only the weaker one.}
+Extent correctness is the one channel an arm could report on itself, and Arm C can: its
+resolved extents are explicit. Arms A and B produce a document and no provenance. Scoring a
+channel from the scored system's own declaration would repeat the mistake the coverage
+denominator once made, so the instrument has to be computed from the output.
+
+The annotation manual and the manifest schema state the condition in its strongest form: every
+sum-type aggregate field must be covered by at least one cross-check, an identity between two
+independently scored fields of the same output. The DOCX dataset satisfies it --- seven
+cross-checks cover all six of its totals, and its own validator fails if any sum-type aggregate
+is left uncovered. The XLSX dataset declares \emph{none}, and its validator contains no such
+check. The reason is structural rather than an oversight: its target form lists one row per
+project and never totals anything, so there is no second output field with which to form an
+identity.
+
+Three consequences have to be recorded, because each is a gap rather than a nuance.
+
+First, the strong form of the condition is not implemented anywhere. The declared cross-checks
+are evaluated at construction time against the ground truth, where they catch a generator whose
+total disagrees with its own detail. The shared evaluator never reads them. The output-only,
+arm-symmetric instrument that \emph{is} implemented is the hypothesis attribution of Condition
+2, which names a wrong extent from the produced document without asking any arm anything.
+Section~\ref{sec:eval:extentasymmetry} is corrected accordingly, and the missing plumbing is
+recorded as an open item rather than described as present.
+
+Second, the checkable condition is therefore the weaker and more general one: every aggregate
+must have at least one detector computed from the output alone. The DOCX dataset has two,
+cross-checks and hypotheses. The XLSX dataset has hypotheses plus two file-level declared
+quantities that a wrong grouping must contradict --- a submitted-sheet count and a project
+count, which check different quantities and each carry one of that dataset's two refusal cases.
+What it does not have, and what the strong form would have given it, is any detector for a
+wrong extent \emph{within} a sheet whose swallowed rows contribute zero. That failure is
+invisible to it, and it is the same shape Condition 2 identifies as the thesis's central case.
+
+Third, and this is why the condition is restated here rather than left to the manual: it is
+enforced by hand-written per-dataset validators. Two of the three datasets check it; one does
+not. An unenforced constraint and a satisfied constraint produce identical evidence, which is
+the failure mode this study has met repeatedly in its own metric plumbing.
+
+\paragraph{Condition 4 --- the annotation format needs six capabilities, not the four the
+protocol lists.}
+The evaluation protocol enumerated four things a flat mapping from field to value cannot
+express: numeric tolerance and format; negative obligation, meaning a position that must be
+empty; extent, recorded row by row rather than as a start and an end; and the separation of
+semantic value from presentation. Annotating the first datasets added a fifth, because an
+output can satisfy all four and still be wrong --- a document that writes every scored field
+correctly and blanks the rest of the template scores full marks under those four. The fifth is
+therefore a policy over every addressable position that no field claims, compared against the
+template.
+
+Checking that count against the frozen schemas rather than against the protocol shows that it
+is now six. The sixth is refusal: some instances have no correct document at all, because a
+required source is missing and the rules mandate a hard failure. The ground-truth schema
+enforces the shape structurally --- an instance declared a refusal must name a code drawn from
+the manifest's declared list, must carry no values and no slots, and must not carry an expected
+artifact --- and scoring evaluates the presence of a file before it evaluates any content. This
+is not reducible to the second capability: an empty cell inside a produced document and a
+document that must not exist are different assertions, and only the second gives fail-loud
+behaviour any evidence in the main results table.
+
+A seventh candidate is deliberately excluded, and the exclusion is a decision rather than an
+omission. Package integrity is scored, but the list of package parts that matter is a constant
+of the scoring policy, not a per-template judgement. Whether an embedded drawing matters is not
+a question each dataset should re-answer, because two authorities for one question drift in the
+direction of ``passes here, fails there''.
+
+\paragraph{Condition 5 --- at least one sealed instance whose correct behaviour is a refusal.}
+Both datasets carry two of five. Without such an instance the fail-loud design principle has no
+representation in the main table at all, and could only be inferred indirectly from the drift
+axis.
+
+\paragraph{What is not satisfied: the human half of the procedure.}
+Two of the annotation manual's requirements are procedural rather than structural, and neither
+has been met. The manual requires that a second person independently redo the judgement step
+for each template, and that each instance receive a spot check of at least three fields
+recomputed by hand from the sources, including one aggregate and one negative obligation.
+Counted across all twenty-eight stored instances of the three datasets: every ground truth
+records its reviewer as pending; one of ten DOCX instances carries a spot check, of six fields
+and twenty-five minutes; one of ten XLSX instances carries one, likewise six fields and
+twenty-five minutes; none of the eight pilot instances carries one.
+
+This is the residual no other mechanism reaches, and it is worth being precise about why.
+Schema validation catches shape errors. Cross-checks catch a total that disagrees with its own
+detail. An independent recompute probe --- which exists for the XLSX dataset, reading the
+written workbooks rather than the case data --- catches transcription and addressing errors,
+and says so in its own documentation. None of them catches a misreading of a rule that the
+generator and the ground truth share, because every number is then wrong together and every
+relation between the numbers still holds. The one spot check performed on the DOCX dataset
+found exactly that class: a per-piece net weight declared in grams where the rules require
+kilograms, whose omission yields sixty thousand instead of sixty and passes all seven
+cross-checks.
+
+Following this thesis's rule for a gap of this kind, the third route is taken: the requirement
+is kept, the shortfall is reported as a number rather than described as partial, it is carried
+as an open item, and its direction is disclosed in Section~\ref{sec:eval:threats}. That
+direction is genuinely undetermined rather than conveniently so. All three arms read the same
+rule document and all three see the same calibration instances with their expected outputs, so
+a shared misreading penalizes whichever arm reads the rules correctly, and nothing in the
+protocol says which arm that would be.
+
+\paragraph{Acceptance criteria for the third template.}
+Restated as a checklist, because it is what the next dataset will be checked against: a
+template that really circulates, retained with its provenance and unmodified; a rule document
+containing no write coordinate of any kind; a generator that imports no product code except in
+a probe that feeds no expected value; expected artifacts recorded with their digests and able
+to reach every scored channel including package integrity; three calibration, two development
+and five sealed evaluation instances; at least one sealed refusal with a declared code;
+aggregated-set cardinality varying across cases and at least one non-earliest case containing
+an excluded member; every declared wrong-extent hypothesis distinguishable on at least one
+sealed instance, and no hypothesis declared that cannot be; every aggregate covered by at least
+one output-only detector, with a cross-check wherever the target form makes one expressible;
+all six annotation capabilities exercised; and the spot check performed and recorded on every
+instance rather than on one.
+
+\paragraph{Status: implementation-backed for the mechanisms, with two conditions measured as
+unsatisfied and one procedural requirement measured as largely undone.}
+The generators, the two schemas, the per-dataset validators with their negative controls, the
+hypothesis computation and the refusal shape are implemented and are in the repository; every
+count in this subsection was read from the stored manifests and ground truths rather than
+estimated. Two conditions are reported as not satisfied by the XLSX dataset --- no excluded
+member in its declared extent, and no cross-check for its aggregates --- and are carried as
+recorded boundaries with their substitutes named. The strong form of the cross-check condition
+has no consumer in the scoring path at all and is recorded as an open implementation item. The
+dual annotation and the per-instance spot check are normative: the requirement stands, the
+measured shortfall is two instances out of twenty-eight, and the bias direction is undetermined.
 
 \section{Baselines and Fairness}
 \label{sec:eval:baselines}
@@ -586,11 +828,18 @@ provenance. Scoring the extent channel from an arm's own declaration would repea
 mistake that the coverage denominator made in Section~\ref{sec:der:coverage} --- a figure
 self-reported by the system being scored is not a cross-arm metric.
 
-The cross-arm instrument is therefore a set of \emph{cross-checks}: identities between two
-independently scored fields of the same instance, which any arm's output either satisfies or
-does not. Alongside them, each dataset's manifest declares, for every wrong-extent hypothesis,
-the values that hypothesis would produce, so a wrong extent can be \emph{named} from the
-output alone rather than inferred. The effect is measurable: an output that occupies one extra
+The cross-arm instrument that is implemented is hypothesis attribution: each dataset's manifest
+declares, for every wrong-extent hypothesis, the values that hypothesis would produce, so a
+wrong extent can be \emph{named} from the output alone rather than inferred, and the naming
+asks no arm anything. A second and stronger instrument is declared but is not yet wired into
+scoring, and the distinction has to be stated rather than blurred. Each manifest may declare
+\emph{cross-checks} --- identities between two independently scored fields of the same instance,
+such as a total equalling the sum of its detail --- which any arm's output either satisfies or
+does not. Those declarations are currently evaluated only at dataset construction time, against
+the ground truth, where they catch a generator whose total disagrees with its own detail; the
+shared scoring program never reads them. Section~ef{sec:eval:dataset} records this as an open
+implementation item, along with the consequence that one of the two evaluation datasets declares
+no cross-check at all because its target form totals nothing. The effect is measurable: an output that occupies one extra
 detail slot while leaving all six totals byte-identical passes all 112 semantic checks on one
 instance and is still identified as a specific wrong-extent hypothesis. Arm C's own resolved
 anchors are reported as supplementary evidence and are explicitly marked as available for one
@@ -825,6 +1074,14 @@ anywhere in this thesis on the strength of the sweep alone.
 \section{Results}
 \label{sec:eval:results}
 
+The formal experiment has not been run, and this section carries no figures. What is settled is
+the shape in which they will be reported: one row per evaluation template with no average across
+templates, because carriers may not be pooled into a single accuracy; the per-channel
+denominators of Section~ef{sec:eval:metrics} kept separate rather than aggregated; and any
+externally sourced template reported in its own subsection rather than inside that average, since
+it answers a validity question rather than a capability one. The subsection below is written now
+because it does not depend on the numbers.
+
 % TODO 實驗尚未執行。呈現形式先定：
 %      Table 主結果（三 arm x 全部指標）
 %      Table 消融
@@ -845,11 +1102,123 @@ anywhere in this thesis on the strength of the sweep alone.
 \subsection{Where the Randomness Went}
 \label{sec:eval:randomness}
 
-% TODO 誠實的一小節，緊接在可靠性數字之後：
-%      本方法沒有消除隨機性，只是把它從 O(N) 次移到 1 次，
-%      並且在那 1 次上加了 gate 與 oracle。
-%      這個交換為什麼值得——以及在什麼條件下不值得（N 太小、derive 成功率太低）。
-%      後者的展開在 §6.2。
+% 2026-08-24 動筆。原 % TODO 要的是「誠實的一小節」，內容照寫；但兩件事查證後要改：
+% (1) §5.4.1 已經寫過「變異度沒有消失、它搬家了」與 D=3 的量法，本節不得重述，
+%     只能引用並問下一個問題：搬過去買到了什麼，以及什麼時候不划算。
+% (2) 「derive 成功率」不得寫成一個數字。15 次 derive 橫跨數個實作版本，
+%     分母不是同一個系統重複跑，所以那是「未量測」而不是一個小的比率。
+%     可辯護的是三件事：9/15 觸發修復、一次付費執行整份報廢於存檔、
+%     兩份主評測資料集至今沒有任何一份規格通過發布閘門。
+
+The single most available objection to this thesis is one sentence long: the randomness was not
+removed, it was moved. That is correct, and this subsection is where it is conceded in full.
+Section~\ref{sec:eval:reruns} states where the variance went and defines the measurement that
+keeps it visible; the questions here are different. What did the relocation buy, and under what
+conditions is it a bad bargain?
+
+\paragraph{What is actually claimed.}
+Executing $N$ instances with a per-instance agent draws $N$ times from a stochastic process.
+Executing them from a compiled specification draws once, at derivation, and then applies a
+deterministic function $N$ times. Nothing in that exchange reduces the variance of the draw.
+The distribution of derived specifications is wide, and measured to be so: four derivations of
+one dataset with identical prompt, payload and input bytes produced rule coverage of 15, 12, 19
+and 23 out of 27, with structural differences of the same magnitude. Any sentence in this thesis
+that reads as ``the method is deterministic'' is a claim about the execution function only, and
+Section~\ref{sec:intro:claims}'s table labels it that way deliberately.
+
+\paragraph{The first thing the exchange buys is a place to put a check.}
+This is the part that is not merely bookkeeping. $N$ stochastic executions have no natural
+review point: reviewing them means reviewing $N$ documents after they exist, and the cost of
+review grows with the same $N$ the cost of production does. One stochastic derivation produces
+one artifact, and that artifact can be examined before any document exists. Everything in
+Chapter~\ref{ch:method} is a consequence of that shape rather than an independent set of
+features --- the structural gates, the author-time oracle, the case-level oracle, the coverage
+denominator, and the human evidence review all operate on a specification, and none of them has
+an analogue in a per-instance arm. This is not a claim that the baselines are weaker; it is a
+claim about where a checkpoint can be placed at all. An agent that writes a document has nothing
+to show a reviewer until the document is written, and by then the review is per instance again.
+
+\paragraph{The second thing it buys is an asymmetry in how failures surface.}
+A bad derivation is refused before publication and costs a re-derivation. A bad execution ships
+a document. That asymmetry is independent of $N$, and it is the reason the exchange is worth
+taking even where the cost argument is neutral. The evidence for the first half is direct: the
+publish gate has blocked derived specifications on this study's own datasets with named codes
+--- overlapping repeat targets, a source field nothing produces, a formula input the execution
+path cannot supply --- and each refusal was later confirmed to correspond to a real defect.
+
+The evidence against overclaiming it is equally direct and is stated in the same breath. When
+one of those specifications was executed for the first time against the shared evaluator, three
+scored cells failed and all three were classified as silent failures: the arm produced a
+complete, well-formed document with three wrong cells, and the gate set did not stop it. The
+asymmetry is therefore real and partial. It says that a whole class of defect is caught before
+any document exists, not that every defect is.
+
+\paragraph{What the exchange costs, in the units this chapter settled.}
+Three costs are measured and belong in the numerator rather than in a footnote. First, repair:
+of the 15 recorded derivations in this project, 9 triggered at least one repair call, and
+Section~\ref{sec:eval:metrics} rules that those calls are part of the derivation cost, because
+reporting only the successful attempt would understate the numerator in the direction that
+favours the proposed method. Second, catastrophic loss of a paid attempt: one derivation ran to
+completion and was then lost in its entirety at persistence, on a defect in the surrounding
+system rather than in the derivation. Third, human review: the evidence review of
+Section~\ref{sec:der:evidence} is real work that the per-instance arms do not perform at all,
+and any cost model that omits it is measuring the wrong thing.
+
+\paragraph{The three conditions under which the exchange is not worth making.}
+Each is stated as a quantity rather than as a caveat, and each is reported honestly as measured
+or unmeasured.
+
+\begin{description}
+  \item[C-i --- too few instances.] Below the break-even instance count, a one-off derivation
+    plus near-zero marginal execution costs more than paying per instance. The relevant count is
+    not the number of instances in existence but the number executed \emph{per specification
+    lifetime}, which template drift shortens: a form revised every quarter resets the
+    amortization every quarter, which is why Section~\ref{sec:eval:drift} is a cost question as
+    much as a correctness one. This quantity is \emph{unmeasured}, and in a specific way that
+    matters: there is no per-instance cost for any baseline at all, because no live baseline
+    adapter has been run. The break-even point is not currently large or small; its denominator
+    is empty.
+  \item[C-ii --- derivation succeeds too rarely.] If the expected number of derivation attempts
+    before a publishable specification is $k$, the amortized derivation cost is multiplied by
+    $k$, and a large enough $k$ removes the advantage at any $N$. This quantity is also
+    \emph{unmeasured}, and it must not be inferred from this project's run history even though
+    that history is recorded in detail. Fifteen derivations were run, but they span several
+    versions of the system being derived from: nearly every unsuccessful one was blocked by a
+    defect in the intermediate representation, the gates, the tool registration or the
+    persistence layer that was then fixed. The denominator is a sequence of different systems
+    rather than one system run repeatedly, so no rate computed from it would mean anything. What
+    can be stated without inference is the current position, measured after the most recent round
+    of gate changes: the best specification on each of the two main evaluation datasets is still
+    blocked, at thirteen and eight canonical unresolved items respectively, so neither dataset yet
+    has a publishable specification. The bias direction of that fact is
+    genuinely mixed --- the history is pessimistic because the defects it records have been
+    fixed, and no optimistic reading is supported either, because a clean end-to-end derivation
+    has not yet been demonstrated on either main carrier.
+  \item[C-iii --- the task is outside the class.] If the output is not deterministically
+    derivable from structured sources and explicit rules, no $k$ helps, because the derivation
+    is being asked for a function that does not exist. The applicability conditions in
+    Section~\ref{sec:design:scope} are the operational form of this, and the honest answer where
+    they fail is that the method does not apply rather than that it performs poorly.
+\end{description}
+
+\paragraph{What the conditions imply for how the results must be read.}
+Two of the three are unmeasured, and both are unmeasured in the direction that would decide the
+economic argument. This has a direct consequence for Section~\ref{sec:eval:results}: a
+break-even curve drawn from a derivation cost without a baseline cost, or from a single
+successful derivation without an attempt count, would be a picture of an assumption. Chapter
+\ref{ch:conclusion} takes up what would have to be measured to close each of the three, and this
+subsection deliberately stops at naming them.
+
+\paragraph{Status: normative for the three conditions, implementation-backed for the mechanism
+and for the costs quoted.}
+The zero-model execution property is pinned by the negative-control test named in
+Section~\ref{sec:design:compile-once}; the gate refusals, the repair frequency of 9 of 15, the
+lost paid attempt, and the three silent failures in an executed specification are all recorded
+measurements from this repository, none of them produced by the evaluation harness. The
+break-even instance count and the derivation attempt count are unmeasured, and are labelled here
+rather than estimated. The bias direction of leaving them unmeasured runs \emph{towards the
+proposed method}, because the two quantities that are missing are precisely the two that could
+make the exchange a bad one, and Section~\ref{sec:eval:threats} repeats that disclosure.
 
 \section{Case Study: Engineering Drawings}
 \label{sec:eval:dwg}
@@ -1053,7 +1422,17 @@ no claim in this thesis is established as vendor-independent.
 
 \paragraph{T12 --- the correctness of the reference outputs.}
 Discussed in Section~\ref{sec:eval:selfvalidation}. Mutation testing bounds the evaluator, not
-the generator; the residual is covered only by a probabilistic spot audit.
+the generator; the residual is covered only by a spot audit, and the audit has largely not
+been performed. Counted across the twenty-eight stored instances of the three datasets, every
+ground truth records its reviewer as pending, and exactly two instances --- one per main
+dataset --- carry the hand recomputation the annotation procedure requires of all of them. The
+class of error this leaves open is a rule misread identically by the rule document and the
+generator, in which case every number is wrong together and every cross-check between the
+numbers still holds; the single audit performed on the DOCX dataset found one instance of
+exactly that class. The direction is undetermined rather than favourable: all three arms read
+the same rule document and see the same calibration instances with their expected outputs, so
+a shared misreading penalizes whichever arm reads the rules correctly, and nothing in the
+protocol determines which.
 
 \paragraph{T13 --- two responses to the pilot that were rejected, and why.}
 After the pilot in Section~\ref{sec:eval:rq} showed the per-instance baseline to be
@@ -1073,8 +1452,8 @@ intention for a result.
 % =====================================================================
 % 【剩下的寫作規格】2026-08-23
 % 已寫成正文：§5.1／§5.2（含三個小節）／§5.3／§5.5／§5.10。
-% 仍是 % TODO 的：§5.4 Metrics（含 5.4.1 rerun budget）、§5.6 Drift、§5.7 Ablations、
-%   §5.8 Results、§5.9 DWG case study。各節的註記就是它們的寫作規格，不要另開一份。
+% 2026-08-24 更新：§5.2.3／§5.4（含 5.4.1）／§5.6／§5.7／§5.8.1／§5.9 亦已寫成正文。
+% 仍是 % TODO 的只剩 §5.8 Results 的表格與圖（等正式實驗）。
 %
 % TODO §5.3 的 Status 段承諾「A/B 的實作、預算、素材清單要完整交代」——
 %      live adapter 建好之後要補一小節寫預算（重試上限、wall-clock 上限的實際數值），
