@@ -262,25 +262,248 @@ as a pilot for exactly that reason; it must not be read as an Arm A result.
 \section{Metrics}
 \label{sec:eval:metrics}
 
-% TODO 正確性：semantic 欄位級正確率（主指標）、案例級全對率（含 negative obligation）、
-%              沉默失敗率、範圍外延正確率（診斷用）
-%      presentation 分開報，不混算。不同載體不可以合併成單一正確率。
-% TODO 可靠性：A/B 的 run-to-run 一致率與全 R 次皆正確的案例比例；
-%              C 的執行期恆等（雜湊實證）+ 推導期變異度
-% TODO 成本：derive 的 token/金額/wall-clock（一次性）、每實例成本、break-even N
-% TODO 覆蓋率：以確定性切段後的規則文件為分母（現況見 §4.6）
+% 2026-08-24 動筆。原本的 % TODO 註記已查證，三處與實作／協定不符，正文採實測版本：
+%  (1) 註記把 extent 寫成「診斷用」，協定 §5.3.1 明寫它仍屬 correctness 通道，
+%      理由是 S4 六種錯外延有四種六個 Total 完全相同；照抄會讓最在意的沉默失敗滿分。
+%  (2) 註記把覆蓋率分母寫成「確定性切段後的規則文件」，實際是人工撰寫、以 SHA-256
+%      綁定的 frozen manifest（§4.6 的 Status 段自己說沒有做過獨立切段）。
+%  (3) 註記的成本欄「token/金額」未裁定；實測 26 次模型呼叫的 reported_cost 全是 0
+%      （訂閱制），所以本節裁定 token 為記錄單位、金額為衍生量。
+
+Section~\ref{sec:der:coverage:plumbing} established the finding this section has to be
+written against: a denominator, an allow-list, or an accepted spelling decides a reported
+number without failing anything. Every metric below is therefore defined as a denominator
+plus a statement of \emph{who decides what may enter it}, because that second half is the
+part that has silently moved a headline figure four times in this project's records.
+
+\subsection{Correctness}
+
+Correctness is partitioned into the seven channels of Section~\ref{sec:eval:channels}, each
+with its own denominator and never averaged into one another. The denominator of each channel
+is the set of checks the dataset's annotation manifest declares with that channel's prefix;
+the manifest is authored per template, frozen, and shared by all three arms, and a check whose
+prefix was never declared raises rather than defaulting into the primary metric.
+
+\paragraph{Field-level semantic accuracy is the primary metric.}
+Its denominator is the values the manifest says the output must carry --- prefixes
+\texttt{scalar/}, \texttt{slot/}, and \texttt{absent/}. What it deliberately excludes is
+formatting, which is reported as its own channel, and the ``this slot must stay blank''
+obligations, which are reported as extent. Carriers are never merged: a single accuracy
+figure spanning DOCX and XLSX would average two different difficulties and two different
+adapters, so the main table has one row per evaluation template.
+
+\paragraph{Extent is reported in its own column, and it is a correctness channel, not a
+diagnostic.}
+This distinction is worth stating explicitly because the informal shorthand for the extent
+channel in this project's own planning notes was ``diagnostic'', and that shorthand is wrong
+in a way that would matter. On the DOCX dataset, four of the six wrong-extent hypotheses
+leave all six totals byte-identical with the correct output; the only trace they leave is one
+extra detail slot consumed, because the rows they wrongly include have empty quantity and
+amount cells. An output produced under one of those hypotheses passes every total, every
+scalar field, and every cross-check. If extent were moved out of correctness, the class of
+error this thesis is centrally about would appear in the main table as full marks. It is
+reported separately \emph{and} counted in the case-level correctness predicate.
+
+\paragraph{Case-level rates, and why there are two.}
+\texttt{passed} is a case in which every correctness channel --- semantic, extent, refusal,
+structure --- is entirely correct. \texttt{clean} is \texttt{passed} with no preservation
+violation, that is, with untouched and integrity also intact. The split is not decoration:
+compressing ``answered wrongly'' and ``damaged the file'' into one rate makes them
+indistinguishable, and their repairs have nothing in common. Presentation enters neither rate.
+Where a rule document is ambiguous about format, a literal comparison measures whether an arm
+guessed what the annotator had in mind, which is not a property of the method.
+
+\paragraph{The silent-failure rate is the risk measure the whole design serves.}
+Each case yields one outcome. \texttt{correct} is every correctness channel intact.
+\texttt{loud\_failure} is a case whose output is missing or unparseable, or a success case
+that produced no scorable semantic evidence at all --- an empty denominator must never be
+scored as zero errors. \texttt{silent\_failure} is the remaining case: an output that is
+complete, opens cleanly, and is wrong. A case whose correct behaviour was refusal but which
+produced a document is a silent failure rather than a fourth category, because what it
+produced is precisely a normal-looking document. The two failure rates are reported
+separately throughout, since a system that fails loudly is operationally a different system
+from one that fails quietly, and this thesis's entire argument is about the second.
+
+\subsection{Reliability, and the Instrument That Measures It}
+
+For the baseline arms, reliability is measured over $M \times R$ executions: pairwise
+agreement between runs of the same instance, the number of distinct output digests, and the
+proportion of cases correct on \emph{all} $R$ runs. For the compiled arm, execution
+reliability is a different claim --- identity, not agreement --- and the instrument has to be
+specified rather than assumed, because measuring it naively gives the wrong answer.
+
+\paragraph{Identity is claimed at three levels, and the third one needs a normalizer.}
+The first level is that no model is called. The test named in
+Section~\ref{sec:der:oracles:judge}'s neighbourhood replaces both repair entry points with
+recorders that fail if invoked, drives a complete production run, and asserts both that
+neither recorder was called and that the operation's recorded model-call count is zero. The
+second level is that the compiled write plan is a pure function of the specification and the
+instance. The third is byte identity of the produced file, which is what the protocol's $R=5$
+subset was intended to demonstrate --- and here the naive instrument misreports.
+
+Writing the same content twice into the two evaluation templates, three seconds apart, gives
+Table~\ref{tab:eval:identity}. The XLSX output is byte-identical, because the
+package-preserving editor copies every archive entry it does not have to change, including its
+recorded timestamp. The DOCX output is \emph{not}: the library used to save it stamps every one
+of the twelve archive entries with the wall-clock time of the save, so two runs differ in
+twelve date fields while every part's content is byte-identical. Digesting the container would
+therefore report the deterministic arm as non-deterministic on one of the two main carriers,
+for a reason that has nothing to do with the method. The instrument of record is accordingly a
+\emph{normalized} digest over the sorted \texttt{(part name, part bytes)} pairs, with the raw
+container digest reported alongside and its divergence attributed. This is the same failure
+shape as the 66.7\% denominator of Section~\ref{sec:eval:channels}: the mechanism was right and
+the bookkeeping would have decided the reported number.
+
+\begin{table}[htbp]
+\centering
+\caption{Two identical writes, three seconds apart, on the real evaluation templates.}
+\label{tab:eval:identity}
+\begin{tabular}{p{0.30\linewidth}p{0.28\linewidth}p{0.28\linewidth}}
+\hline
+ & \textbf{XLSX (13020D)} & \textbf{DOCX (invoice)} \\
+\hline
+Container bytes & identical & \textbf{differ} \\
+Archive entries whose date changed & $0$ & $12$ of $12$ \\
+Parts present after the write & unchanged & $10 \rightarrow 12$ \\
+Every part's content identical & yes & yes \\
+Normalized digest & identical & identical \\
+\hline
+\end{tabular}
+\end{table}
+
+Two rows of that table are findings rather than calibration. The DOCX writer \emph{adds} two
+parts, a default header and footer the template did not carry; the integrity channel does not
+see this, because those names fall outside its critical-part prefixes, so the addition is a
+bounded blind spot of that channel and is recorded as one. And the contrast between the two
+columns is a direct consequence of the package-preserving write adopted for XLSX: the DOCX
+carrier still re-serializes its whole archive on every save.
+
+\paragraph{The compiled arm's variance is real; it is in the derivation.}
+Reporting execution identity without derivation variance would misstate RQ2, and
+Section~\ref{sec:eval:reruns} defines the measurement that prevents it.
+
+\subsection{Cost}
+
+\paragraph{The unit of record is tokens; money is a derived and labelled quantity.}
+This has to be settled explicitly, because the obvious choice fails on the available data.
+Every model call this project has made is recorded with five token counts and a reported
+cost, and the cost field is deliberately nullable so that ``the provider reported zero'' is
+distinguishable from ``usage was unavailable''. Across the $26$ recorded calls, the token
+fields are complete --- no nulls --- and the reported cost is a true, non-null $0$ on every
+one, because the account is a subscription rather than metered. A money-denominated
+break-even would therefore be not merely unknown but structurally undefined: the numerator is
+zero by construction. Cost is consequently reported as input, output, reasoning, cached-read
+and cached-write tokens, with wall-clock as a separate column; a monetary figure, if given at
+all, is computed from a named public price list at a named date and labelled as derived, with
+both the compiled arm's derivation and the baselines' per-instance calls priced on the same
+list. The harness already records the token fields and the null-versus-zero distinction, so
+this ruling is a decision about presentation rather than about instrumentation.
+
+\paragraph{Break-even, and the retries it must include.}
+The break-even instance count $N^{*}$ is the point at which one derivation plus $N$
+deterministic executions costs less than $N$ per-instance agent executions. Because the
+compiled arm's marginal execution cost is zero model tokens by construction, $N^{*}$ reduces
+to the derivation's total tokens divided by a baseline instance's tokens. The word ``total''
+is the part that is easy to get wrong. A derivation is not one call: of the $15$ derivations
+recorded in this project's model-call log, $9$ invoked at least one repair call and two
+invoked a second. Quoting only the successful derivation call would understate the cost of the
+method, and in the direction that flatters it. The recorded aggregates, which are development
+runs rather than harness runs, are $1{,}402{,}174$ input and $306{,}446$ output tokens across
+the $15$ derivation calls, and $142{,}361$ input and $1{,}453$ output tokens across the $11$
+repair calls; that asymmetry is itself informative, since a repair re-sends a large payload to
+produce a very small proposal. Derivation wall-clock ranged from $323$ to $986$ seconds with a
+median of $607$.
+
+\paragraph{The denominator that is empty, stated plainly.}
+Not one of the numbers above is a baseline cost. No per-instance cost for Arm A or Arm B has
+been measured, all $26$ recorded calls used a single model, and the figures span three
+datasets and several months of implementation change. $N^{*}$ is therefore currently
+undefined, and this is the largest empty denominator in this chapter. It is recorded here
+rather than left to the results section, because a cost argument whose baseline is missing is
+the kind of claim that quietly becomes an assumption.
+
+\subsection{Rule Coverage Is an Arm C Diagnostic}
+
+Coverage is reported as \texttt{covered}, \texttt{unresolved}, \texttt{rejected} and
+\texttt{unmentioned} against an external denominator, and two properties of it must be
+carried into this chapter unchanged from Section~\ref{sec:der:coverage}. First, the
+denominator is a frozen rule-applicability manifest \emph{authored by a human} from the rule
+document and bound to it by the SHA-256 of its bytes. Binding prevents drift; it does not
+establish that the prose was segmented correctly, and no independent segmentation has been
+performed. Describing the denominator as a deterministic segmentation of the rule document
+would overstate it. Second, only the compiled arm produces dispositions at all, so coverage
+cannot appear in any cross-arm correctness figure; it is a derivation diagnostic and is
+reported with the derivation results, never in the main table.
+
+\paragraph{Status: implementation-backed for the channel definitions and the identity
+instrument; normative for the cost metrics.}
+The seven channels, their fail-closed classification, the two case-level rates and the outcome
+classification are implemented in \texttt{benchmark/evaluator/scoring.py} under a frozen policy
+version, with negative controls per channel. The identity instrument is backed by the
+measurement in Table~\ref{tab:eval:identity}, taken on the two real evaluation templates. The
+cost metrics are a plan: the ruling on units is made here, the harness records the fields, and
+no baseline cost has been measured. The bias direction of that gap favours the proposed method,
+since an unmeasured baseline cost is the one quantity that could move $N^{*}$ against it.
 
 \subsection{Asymmetric Rerun Budget}
 \label{sec:eval:reruns}
 
-% TODO ★ 要主動辯護這個設計 ★
-%      A/B 各 R=5；C 主表 R=1 + 指定子集 R=5 以輸出雜湊實證恆等。
-%      理由：C 的執行期是零 LLM 確定性的，跑五次必然逐位元相同，那不是實驗是複製檔案。
-%
-% TODO ★ 但 C 的變異度沒有消失，只是換了位置：它在推導期 ★
-%      量法：同一模板獨立 derive D=3 次 -> 3 份規格 -> 每份跑全部評測實例，
-%      報告三份規格之間的正確率／覆蓋率分佈與 spec diff 規模。
-%      把 C 報成「變異度 0」而不交代這件事，會被審稿人一句話擊破。
+\paragraph{The asymmetry is a consequence of the claim, not a saving.}
+The symmetric design --- every case, every arm, $R$ times --- allocates most of its budget to
+copying files. If the compiled arm's execution is deterministic and calls no model, five runs
+of one specification over one instance produce five identical outputs, and the fifth teaches
+nothing the first did not. The budget is therefore $R=5$ for Arms A and B, where every
+execution is an independent sample of a stochastic process, and $R=1$ for Arm C on the main
+table, with a designated subset run $R=5$ to \emph{demonstrate} the identity rather than to
+average over it, using the normalized digest of Table~\ref{tab:eval:identity}. Skipping the
+demonstration would be assuming what is being claimed; repeating it on every case would be
+measuring the file system.
+
+\paragraph{The variance did not disappear. It moved, and it must be measured where it went.}
+Reporting Arm C as having zero variance without qualification invites, and deserves, the
+one-line rebuttal that the randomness was merely relocated. It was. The formulation of
+Chapter~\ref{ch:architecture} places all of it in the derivation: $\mathcal{A}$ is stochastic
+and $\mathcal{X}$ is deterministic. The measurement that keeps the claim honest is therefore
+$D=3$ independent derivations per evaluation template, each producing a specification, each
+specification run over every evaluation instance, and the reported quantity a
+\emph{distribution} --- accuracy, coverage, and the size of the diff between the
+specifications --- rather than a single derivation's numbers.
+
+\paragraph{``Independent'' has an operational definition, and getting it wrong would
+contaminate the measurement in the method's favour.}
+A product derivation reads the field names of the dataset's existing healthy specifications and
+feeds them back to the agent. That accumulation is a genuine capability of the method --- a
+per-instance agent structurally cannot have it --- but a $D=3$ measured with it is a warm-start
+measurement, and reporting it as the method's variance would compare an arm with memory against
+two arms without any. The three replicates therefore run in separate dataset namespaces, which
+is what severs the history, and the harness enforces the condition rather than trusting it: each
+replicate's envelope must carry empty prior-specification, diagnostic-run and repair-run lists,
+the Arm C derivation may not be handed a specification resource, and the store refuses a dataset
+namespace that has already been used. The three replicates share one frozen rule manifest, and
+each must record the same version and SHA-256, so the denominator cannot move between them.
+Convergence under repeated re-derivation within one dataset is a separate and legitimate
+experiment; what is prohibited is running warm and reporting cold.
+
+\paragraph{What is already known about that variance, and what it is not.}
+Four derivations of the XLSX template have been run with identical prompt, identical payload
+and identical input bytes. They produced rule coverage of $15$, $12$, $19$ and $23$ out of
+$27$; one declared three detail slots where the template has seven; another declared none of
+the cross-file collection its predecessor had used; the count of hard structural errors ranged
+from four to zero. Two derivations of the DOCX template with an identical prompt differed in
+whether the computed extent columns survived at all. This establishes that derivation variance
+exists and is large, which is the qualitative half of RQ2. It is \emph{not} the planned
+experiment: those runs were not namespace-isolated, the implementation changed between several
+of them, and their purpose was debugging. They are reported as observations with that
+provenance attached, and the distribution promised above has not been measured.
+
+\paragraph{Status: normative for the budget and the $D=3$ design; implementation-backed for
+the isolation mechanism, the identity instrument, and the existence of derivation variance.}
+The namespace isolation, the empty-history conditions and the manifest-version checks are
+implemented in the harness and covered by negative controls. The budget itself is a plan, and
+its bias direction is worth naming: giving the baselines five runs and the compiled arm one is
+generous to the baselines under any best-of reading and unfavourable to them under any average,
+so the reporting must state which it uses --- this thesis reports per-run and all-runs figures,
+never a best-of.
 
 \section{The Evaluator}
 \label{sec:eval:evaluator}
@@ -382,16 +605,222 @@ own arithmetic, as stated above.
 \section{Template Drift}
 \label{sec:eval:drift}
 
-% TODO 漂移是獨立的一條軸，dev/eval 切分全是同模板，吃不掉它。
-%      一個變體只動一個變因（挪動／改欄位名／換 block／增列擇一），否則失敗時分不出成因。
-%      觀察：A/B 是否沉默地產生錯檔；C 是否在 gate 明確失敗、是否指出漂移位置、
-%      重新推導需要多少成本。這是 fail-loud 設計原則的直接證據。
+% 2026-08-24 動筆。原 % TODO 註記查證結果：產生端不存在、偵測端「已可用」是**部分正確**。
+% 實測：production 的執行期漂移檢查在 office 載體上根本沒有，在 DWG 載體上讀的是
+% `input_artifact.metadata["structural_fingerprint"]`，而全 repo 沒有任何地方寫這個鍵
+% （唯一的使用點是它自己，唯一的測試手工塞 metadata）。依 §3 走第 1＋3 條出路。
+
+Every split in Section~\ref{sec:eval:split} holds the template fixed and varies the instance.
+Template revision is an orthogonal axis, and a held-out design cannot absorb it: an arm that
+has never seen a template is in exactly the position of an arm whose template just changed
+only if the change is total, which is the least interesting case. This section is the direct
+test of the design principle of Section~\ref{sec:design:failloud}, because a drifted template
+is where a silent failure is cheapest to produce and hardest to notice.
+
+\paragraph{One variable per variant.}
+Each evaluation template gets a set of controlled variants, each differing from the original
+in exactly one respect: a block moved, a field's caption reworded, a block substituted, or a
+row inserted. A variant that changes two things at once cannot attribute the failure it
+provokes, and the earlier benchmark review made the same point about the pilot dataset. The
+observations are then symmetrical across arms: does the baseline produce a wrong file without
+saying anything; does the compiled arm refuse, does it name the location of the change, and
+what does re-deriving cost.
+
+\subsection{What Exists, and at Which Moment It Runs}
+
+Drift detection in this system is a structural fingerprint --- a hash over which references
+exist and what kind each is, with text and geometry excluded for the reasons in
+Section~\ref{sec:design:drift}. Its sensitivity has been measured on both real evaluation
+templates rather than on fixtures, and Table~\ref{tab:design:fingerprint} reports what it does
+and does not move on. The essential entry for this section is that inserting a row inside the
+form changes the fingerprint on both carriers, while a library round trip with no edit does
+not.
+
+\paragraph{At review time the detector is wired, and its gate distinguishes two kinds of
+silence.}
+Re-inspecting a template recomputes its fingerprint, updates the lineage, and marks every
+specification keyed to the old structure as stale. Publication then refuses in two different
+ways. A stale fingerprint is a reviewable refusal: an operator may override it, but only with
+a written reason that is recorded permanently on the production version. A template role with
+\emph{no} recorded fingerprint at all is not overridable, because ``nothing drifted'' and
+``nobody ever fingerprinted this'' produce the identical empty list, and publishing on the
+second reading means publishing with the detector switched off for that document. That
+asymmetry is the part of the mechanism this thesis actually wants to claim, and it is
+implemented and gated.
+
+\paragraph{At execution time the detector is not wired, and this is a defect rather than a
+boundary.}
+The claim RQ4 needs is stronger than the one above: a frozen artifact meeting a drifted
+template on the run that uses it must fail loudly. Auditing the production path for this
+section found that it does not, in two different ways on the two paths.
+
+On the DOCX and XLSX path --- the two main evaluation carriers --- no fingerprint comparison
+occurs at all. What does protect that path is a different check: every reference the compiled
+plan writes must exist on the template, and a plan naming a reference the template does not
+have is refused with \texttt{TARGET\_NOT\_FOUND} before anything is written. That is a real
+fail-loud behaviour and it covers a real class of drift, namely any change that invalidates a
+reference. It cannot cover the complementary class, and the complement is precisely what the
+fingerprint was built for: a row inserted above a detail area leaves every reference a
+perfectly valid address and changes what that address means. The two mechanisms are
+complementary, and only one of them runs when an instance is produced.
+
+On the drawing path a fingerprint comparison is present in the code and returns
+\texttt{TEMPLATE\_DRIFT\_DETECTED} before any inspection. It compares the specification's
+fingerprint against a \texttt{structural\_fingerprint} entry in the input artifact's metadata
+--- and a search of the repository finds exactly two occurrences of that key: the line that
+reads it, and one test that constructs the metadata by hand. Nothing in the system ever writes
+it. The comparison is therefore unreachable on any real artifact, the guard has never fired,
+and its test is green and will stay green. This is the failure mode Section~\ref{sec:der:gates}
+names as the vacuous guard, and the reason it survived is the one recorded in this thesis's
+verification rule: the only thing exercising the declaration was an input written by the same
+hand as the code.
+
+Following the first of the three admissible responses, this is recorded as an implementation
+task with the claim it blocks named, and the claim is labelled in the meantime rather than
+softened. Until the production input is fingerprinted, RQ4's ``does the compiled method fail
+loudly'' is answered at review time and, on the office carriers, by reference existence at run
+time; it is \emph{not} answered by drift detection at run time. The bias direction is towards
+the proposed method: an unwired detector reported as a fail-loud property would credit the
+method with a refusal it cannot currently make.
+
+\subsection{What Does Not Exist}
+
+The variant generator does not exist. Producing controlled single-variable drift variants of a
+real government form and a real trade document is dataset work of the same kind as building the
+datasets themselves, and none of it has been done; the drift experiment is therefore entirely
+unrun, not merely unreported. Two further limits of the detector are already measured and are
+carried here from Section~\ref{sec:design:drift} because they bound what the experiment could
+show even once the variants exist. On a spreadsheet the fingerprint covers only cells that
+carry content, so a variant that changes layout past the last content-bearing cell --- below
+row $25$ on the monthly-report template --- is invisible to it, and such a variant would have to
+be classified as out of scope rather than counted as a miss. And a specification's
+blank-target declarations are not compared by the structural diff at all, so two specification
+versions differing only in what they claim to leave blank present a reviewer with an empty
+change list.
+
+\subsection{Metrics for This Axis}
+
+Three quantities are reported per variant, and each is defined so that it can be computed
+identically for an arm that declares nothing.
+
+\begin{description}
+  \item[Silent-failure rate under drift.] The proportion of variants on which an arm produces
+    a complete, parseable, wrong document. This is the same outcome classification as
+    Section~\ref{sec:eval:metrics} and needs no arm-specific instrumentation, which is what
+    makes it comparable.
+  \item[Localization rate.] Given a failure, whether the arm's output identifies \emph{where}
+    the template changed. For the compiled arm this is the refusal's named reference or role;
+    for a baseline it is whatever the agent's transcript states, judged against the variant's
+    known single variable. An arm that fails loudly without localizing scores on the first
+    metric and not on the second, and separating them matters because a refusal that says only
+    ``something is wrong'' costs an operator the same search as no refusal at all.
+  \item[Repair cost.] For the compiled arm, the tokens and wall-clock of re-deriving against
+    the variant, including repair calls, measured in the units settled in
+    Section~\ref{sec:eval:metrics}. For the baselines this quantity is structurally zero and
+    reporting it as an advantage would be an error: they pay per instance forever, which is
+    the trade Section~\ref{sec:eval:randomness} discusses.
+\end{description}
+
+\paragraph{Status: normative, with one component implementation-backed and one defect
+disclosed.}
+The fingerprint's sensitivity is measured on both real evaluation templates, and the publish
+gate's two-way refusal is implemented and tested. The execution-time comparison is unreachable
+on the drawing path and absent on the office paths, and is recorded as an open implementation
+item. The variant generator does not exist and no drift experiment has been run, so every
+number this section describes is a plan. Where the design is claimed without evidence, the bias
+runs towards the proposed method, and Section~\ref{sec:eval:threats} repeats it there.
 
 \section{Ablations}
 \label{sec:eval:ablation}
 
-% TODO 拿掉 structural gates／只留單一 oracle（證明 §4.3 的互補性）／拿掉 repair loop／
-%      換模型（至少兩個，證明結論不綁單一供應商）。
+% 2026-08-24 動筆。原 % TODO 註記列四項消融，其中「只留單一 oracle」照抄會出錯：
+% case-level oracle 在自動路徑上沒有呼叫者（§4.4 的 Status 段明寫），所以把它拿掉是
+% 一個 no-op，量到的會是 0 而讀者會以為那是「它不重要」。已改寫並標明前置條件。
+
+RQ5 asks which parts of the derivation procedure are load-bearing. The question is not
+rhetorical: this chapter argues that a verified derivation beats an agent's own attempt at the
+same idea, and if the gates and oracles turn out to be mutually redundant then the honest
+version of that argument is much smaller. Four ablations are planned, and before they are
+listed it is worth separating two different things the word can mean here, because this
+project already runs one of them continuously and has never run the other.
+
+\subsection{Two Kinds of Ablation, and Which One Is Cheap}
+
+\paragraph{Observability ablation, already mechanized.}
+Disabling one guard and asking whether its own tests still fail measures whether that guard is
+still \emph{observable} --- whether anything in the suite depends on it. This project runs it
+as a sweep over fourteen enumerated guards, each disabled by a one-line substitution, each
+required to turn its selected tests red; a row that selects no tests is treated as invalid
+rather than as passing. The sweep exists because a guard becoming redundant turns no test red,
+and it has caught two guards that had become vacuous inside their own suites. It costs nothing
+and runs offline.
+
+What it does not measure is contribution to accuracy. A guard can be fully observable in the
+test suite and still never have prevented a defect on real material, and conversely.
+Conflating the two would let a green sweep stand in for RQ5, which it cannot.
+
+\paragraph{Retrospective replay, also cheap, and the instrument this project actually uses.}
+The second cheap form is to replay a gate over the corpus of stored specifications that were
+produced \emph{before} that gate existed, and count how many it would have refused. This
+answers ``would it have fired'', on real derivation output, at no model cost. It has been used
+four times in this project and the numbers are informative in both directions: a gate on
+formula inputs that nothing produces flagged $11$ of $35$ stored specifications with no false
+positive; a slot-alignment gate replayed over the corpus matched exactly the two specifications
+it was written for and left the other dataset's five untouched; an audit of which authority
+decided each of $610$ target references found $10$ to be inferred rather than authored, all in
+one dataset; and the contract audit of Section~\ref{sec:design:ir} moved from $11$ invalid to
+$4$, all four of which the compiler independently refuses.
+
+The limitation of retrospective replay is precise and must be stated wherever it is used: it
+tells you whether the gate would have fired on the specification that was produced, not what
+specification would have been produced had the gate been present. A gate that fires changes the
+repair loop's input, and therefore changes the artifact. Replay bounds a gate's yield from
+below; it cannot bound the method's accuracy without it.
+
+\subsection{The Four Planned Ablations}
+
+\paragraph{A1 --- structural gates removed.}
+Derive with the structural gate set disabled and score the resulting specifications with the
+same evaluator. The expected effect is not lower accuracy on the fields that exist but a larger
+count of specifications that do not execute at all, which the outcome classification of
+Section~\ref{sec:eval:metrics} would score as loud failures. That is the interesting prediction:
+gates are hypothesized to convert silent failures into loud ones rather than to raise accuracy,
+and an ablation that measured only mean accuracy would find them worthless.
+
+\paragraph{A2 --- one oracle instead of two, and the precondition this ablation has.}
+The complementarity argument of Section~\ref{sec:der:oracles} is the central empirical claim of
+Chapter~\ref{ch:method}, so testing it matters. The ablation cannot currently be run as stated,
+and the reason is recorded rather than worked around: the case-level oracle has no caller in the
+automated derivation path. Removing it from that path is a no-op, so the measurement would
+return zero difference, and zero would be read as ``the second oracle contributes nothing'' when
+what it actually means is ``the second oracle was never in the pipeline''. The ablation is
+therefore stated in two parts. Wiring the case-level loop into the automated path is a
+precondition, recorded as an open item; until it is done, only the author-time oracle can be
+ablated, and the case-level oracle's contribution can be reported only offline, by running
+stored specifications against their annotated cases and counting the defects the author-time
+oracle had passed.
+
+\paragraph{A3 --- repair loop removed.}
+Accept each derivation's first proposal and score it. Of the $15$ derivations in the model-call
+log, $9$ invoked at least one repair, so this ablation touches a majority of runs rather than a
+tail. It also has a cost reading as well as an accuracy reading, since the repair calls are
+where a derivation's token cost stops being a single number.
+
+\paragraph{A4 --- a second model.}
+Every one of the $26$ recorded model calls used a single model from a single provider. A
+conclusion drawn from one model is a conclusion about that model, and the thesis claims a
+property of an architecture. This ablation is the one with no cheap form: it requires paid runs
+of the full derivation, and it interacts with the cost accounting of
+Section~\ref{sec:eval:metrics}, since a second provider will report metered costs where the
+first reports a subscription zero --- which is another reason the unit of record there is
+tokens.
+
+\paragraph{Status: normative. Nothing in this section has been run.}
+The observability sweep and the four retrospective replays are implemented and their numbers
+are real, but neither answers RQ5, and saying so is the point of the distinction drawn above.
+The four ablations are a plan; A2 additionally has an implementation precondition that is
+recorded as an open item, and A4 requires model budget. No component contribution is claimed
+anywhere in this thesis on the strength of the sweep alone.
 
 \section{Results}
 \label{sec:eval:results}
@@ -425,9 +854,97 @@ own arithmetic, as stated above.
 \section{Case Study: Engineering Drawings}
 \label{sec:eval:dwg}
 
-% TODO DWG 獨立報告，不併入主結果表。
-%      價值在於證明方法在表徵最不友善、且交付物有法規與生產責任的載體上一樣成立。
-%      現有規模：1 份基準模板、1 份規則文件、5 個回歸案例、4 個標準答案圖、0 個漂移變體。
+% 2026-08-24 動筆。原 % TODO 註記寫「價值在於證明方法在表徵最不友善的載體上一樣成立」，
+% 那是**舊框架**。權威理由是 evaluation-protocol-v1.md §2.1 的開發污染：
+% 「整套系統就是在它身上長出來的，構造上已被污染」。照抄會把一條效度預防措施寫成賣點。
+% §1.1 與 §2.5 已各有一句正確版本，三處必須一致。
+
+The drawing carrier is reported here and is not in the main results table. The reason is worth
+stating in the same words used in Section~\ref{sec:intro:motivation}'s discussion of carriers and
+in Section~\ref{sec:rel:understanding}, because an earlier version of this chapter's plan gave
+a different one and the difference matters: the exclusion is not a statement about the
+carrier's difficulty or its prestige. The entire system was built on a drawing template. Every
+prompt, every gate, every choice of intermediate representation was tuned against it over
+months. Any figure this carrier produces is contaminated by construction, and reporting it
+beside figures from templates the system did not grow on would be reporting two different
+things in one column. That is a validity precaution. Presenting it as a showcase --- ``the
+method even works on the hardest representation'' --- would invert a precaution into a selling
+point, and would additionally rest on an argument of the form ``models cannot read this
+format'', which the next model answers.
+
+\subsection{What the Case Study Is}
+
+The artifact is a fan datasheet drawing. Its material, counted rather than estimated, is one
+baseline template; five case directories, of which four carry an independently produced
+expected drawing with its own expected-value record; rule material consisting of a
+provenance slide deck and a checking list rather than a single prose rule document; and zero
+drift variants. Seventeen of the thirty-five stored specifications in the development database
+belong to the two drawing lineages, and four production versions were published from them.
+
+Two properties of that inventory rule out treating it as a small evaluation dataset rather than
+as a case study, independently of the contamination argument. The rule material is not a rule
+document in the sense the rest of this thesis uses --- there is no frozen rule-applicability
+manifest for it, so the coverage denominator of Section~\ref{sec:eval:metrics} does not exist
+here. And there is no evaluator adapter for the carrier at all: the shared scoring program
+raises rather than guessing when asked for a dataset and carrier combination it has no adapter
+for, and drawings are such a combination. The numbers this case study can produce are therefore
+not produced by the instrument that produces the main table, and cannot be placed next to it
+even channel by channel.
+
+\subsection{What It Contributes Anyway}
+
+\paragraph{It is the evidence that the pipeline is carrier-neutral rather than
+carrier-agnostic by assertion.}
+The compiler is shared across all three carriers, and the plan it emits is a carrier-neutral
+edit operation rather than anything drawing-shaped. That claim is checkable, and checking it
+found one leak: the compile entry point returned a drawing-specific message for every carrier,
+so an XLSX specification refused by validation was told its ``DWG spec validation failed''.
+It was corrected, and a sweep for the same shape found that the three remaining drawing-specific
+error codes are each correctly confined behind a target-kind branch with a stated reason. A
+carrier that is never exercised is exactly where such a leak survives, and having a live
+drawing path is what exposed it.
+
+\paragraph{It is the origin of one intermediate-representation construct that no office
+carrier needs.}
+A drawing renders a two-cell row --- a value, its annotation, its maximum, and a unit --- as
+four independently positioned entities with no containing structure. The IR models this as a
+single field owning the whole row, collapsing into one string when either number changes and
+left untouched when neither does. It has its own gate: a row whose maximum has no locatable
+handle is refused, because without it the row can be neither blanked nor compared, and the
+carry-over decision degrades silently into an unconditional rewrite. That gate is not
+decorative. One stored drawing specification declares a row whose maximum carries a transform
+and no handle; the compiler refuses it, and the published contract independently rejects the
+same specification for the same missing key. It is one of only four stored specifications the
+contract rejects, and the contract and the compiler agree on all four.
+
+\paragraph{It is where the loosest inference in the system was actually observed to misfire.}
+Label-proximity inference --- deciding which rule a field belongs to by the caption nearest the
+target --- is the weakest matching mechanism in the derivation, and an audit of it found that
+on the two office evaluation datasets it contributes nothing, because the geometric path is
+reachable only on non-agent derivations. The specification it did damage is a drawing one, and
+the mechanism by which it did so is a good illustration of why the audit was worth doing: a
+revision note reading \texttt{REVISE AVC BARCODE DEFINITION} was matched to a current-rating
+rule, because that rule listed the unit \texttt{A} and the letter \texttt{A} occurs inside
+\texttt{AVC}.
+
+\paragraph{The zero-model-execution claim is carrier-independent, and this is where it was
+first true.}
+The production path calls no model on any carrier, and the evidence is not a reading of the
+source but a test that substitutes failing recorders for both repair entry points, drives a
+complete run, and asserts that neither was reached and that the operation's model-call count is
+zero. The drawing path is the one where a repair branch used to exist, so this carrier is where
+the claim has the longest history of not being true; the test is what makes it hold in the
+future rather than only today.
+
+\paragraph{Status: implementation-backed as a description; explicitly not evidence of
+generalization.}
+The inventory above is counted from the repository, the carrier-neutral compile path and the
+row gate are implemented and tested, and the zero-model-call property is pinned by the test
+named. What this section does \emph{not} claim is that the method generalizes to engineering
+drawings, and the reason is the one it opens with: the system was developed on this artifact,
+so a good result here is uninformative and a bad one would be surprising. The bias direction is
+towards the proposed method in the obvious way, which is exactly why nothing from this section
+enters the main table, any average, or any of RQ1 through RQ4.
 
 \section{Threats to Validity}
 \label{sec:eval:threats}

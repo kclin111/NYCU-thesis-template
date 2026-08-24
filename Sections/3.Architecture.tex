@@ -677,7 +677,7 @@ the specification. A declaration failing any of them is reported together with t
 that failed and is \emph{not} attached to the document, because attaching it would let a
 false claim into the coverage numerator even while a finding blocked the publish.
 
-\paragraph{The IR is also a published contract, and the contract does not currently hold.}
+\paragraph{The IR is also a published contract, and a declaration nobody runs drifts.}
 A JSON Schema for the specification ships in the contracts package, and it is a real
 constraint rather than documentation: several of its object definitions close
 \texttt{additionalProperties}, so a key the schema does not know is illegal rather than
@@ -688,29 +688,50 @@ turned out to have been forbidding, for two design revisions, the row-set column
 implementation had been emitting all along, because no test had ever validated a real
 specification against it.
 
-That check was extended for repeat columns but not for the corpus. Validating every stored
-specification against the published schema now gives $24$ of $35$ valid and $11$ invalid,
-from eight distinct causes. Three are legacy specifications predating a required key and one
-is a legacy row shape; the remaining seven are live divergences between what the backend
-emits and what the contract permits, including the aggregate key introduced for detail-table
-totals on a field, provenance and label keys the derivation attaches to repeat blocks and
-their columns, and a null render format where the schema requires a string. The three most
-recent specifications for the XLSX evaluation template are valid; a fresh derivation of the
-DOCX pair would not be, because the field-level aggregate key it needs is still not in the
-contract.
+The lesson was drawn one notch too narrowly. That check was extended for repeat columns,
+and the test written to enforce it validated a \emph{hand-written} candidate rather than a
+stored specification --- which is to say it was written from the same understanding as the
+code it was meant to contradict. Validating all $35$ stored specifications against the
+published schema found $11$ invalid from eight distinct causes, and among them the
+field-level aggregate key that detail-table totals require: every specification of the DOCX
+shape had been contract-invalid since that key was introduced, and nothing in the system
+said so. The adjudication was made key by key rather than in bulk. Four causes are the
+contract being wrong: the aggregate key, and the reviewer-facing label, prose and provenance
+keys the derivation attaches to repeat blocks and their columns, which reach a stored
+specification verbatim because repeat blocks pass through no allow-list at all; and a null
+render format, which the value layer treats as identical to an absent one for a field, a
+repeat column and a row's second cell alike. Those are now declared, with
+\texttt{additionalProperties} still closed on both objects, since what that flag is for on
+the repeat side is a misspelt slot template --- a key nothing reads, addressing one cell for
+every slot, with every write reporting success. Four causes are the contract being right:
+three legacy specifications with no source declaration and one with an unlocatable second
+cell. Those four are refused by the compiler as well, for the same reason and at the same
+place.
 
-\paragraph{Status: implementation-backed for the IR and its normalizer; the published
-contract is measured and does not hold over the stored corpus.}
+The measured statement is therefore not a proportion but an agreement: $31$ of $35$ stored
+specifications satisfy the contract, and \emph{no} stored specification is one the compiler
+accepts and the contract rejects, where six were before. The check runs in two places
+because the two questions differ. A probe validates the stored corpus, which is the only
+material derived by paid runs rather than authored for a test; and the persisted output of
+four end-to-end derivations --- the two-document DOCX shape, the single-document XLSX shape,
+a collection read, and a merge --- is validated inside the test suite, which is what turns
+red the next time a derivation emits something the contract forbids. Reverting each
+relaxation in turn moves both numbers, which is what makes the first one evidence rather
+than an absence.
+
+\paragraph{Status: implementation-backed, including the contract.}
 \texttt{spec\_ir} is a pure module with a normalizer both generations pass through, and its
 shape checks are the same functions the write side and the read side use, so a specification
-cannot be validated by one vocabulary and executed by another. The contract gap is a real
-defect and is handled under the first of this thesis's three routes for such a gap --- fix
-the implementation, with a recorded entry naming what it blocks --- rather than by weakening
-the claim: the correct statement today is that the IR \emph{has} a published contract which
-$24$ of $35$ stored specifications satisfy, not that the contract is an enforced invariant.
-The acceptance criterion recorded with that entry is the one this measurement makes obvious:
-a check that validates the stored corpus, not another hand-written fixture, since a fixture
-is written from the same understanding as the code it is meant to contradict.
+cannot be validated by one vocabulary and executed by another. The contract gap was handled
+under the first of this thesis's three routes for such a gap --- fix the implementation ---
+rather than by weakening the claim. What remains normative is narrower than it was: the
+contract is enforced over derivation output and audited over the corpus, but it is not
+enforced at persistence time, so a specification that violated it would be caught by a test
+run rather than refused on the spot. And the contract constrains shape only. A perfectly
+valid specification can still write the right value to the wrong cell; that is what the
+author-time oracle of Section~\ref{sec:der:oracles:authortime} and the evaluator of
+Chapter~\ref{ch:evaluation} are for, and a key being legal is not evidence that anything
+reads it.
 
 \section{Structured Dump as Grounding}
 \label{sec:design:dump}
