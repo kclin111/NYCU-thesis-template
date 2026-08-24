@@ -493,13 +493,30 @@ protocol violation and reported rather than silently tolerated. This matters bec
 failure it prevents --- an agent quietly improving its own skill between instances --- would
 convert Arm B into a per-instance arm while still being reported as a frozen one.
 
-\paragraph{Status: contract implementation-backed, live execution not yet built.}
+\paragraph{Status: contract and adapters implementation-backed, no paid run executed.}
 The three-arm input and evidence contract is frozen and tested: the truth-free input
 manifest, the hashable envelope, the Arm B freeze, namespace isolation for Arm C, retention
-of raw attempt evidence, and fake-capture negative controls are all implemented. The live
-adapters that actually drive Arms A and B, and the formal wrapper around Arm C, are not.
-The pilot reported in Section~\ref{sec:eval:rq} was run outside that harness and is labelled
-as a pilot for exactly that reason; it must not be read as an Arm A result.
+of raw attempt evidence, and fake-capture negative controls are all implemented. As of
+2026-08-24 so are the adapters that drive the arms: one shared live adapter for Arm A's
+execution and both of Arm B's phases, and a wrapper for each of Arm C's two phases. All
+five arm/phase seams have been driven end to end on the calibration split of both main
+datasets, with every attempt record validated against the frozen evidence schema and the
+cross-arm parity audit passing.
+
+Three limits on that statement matter. First, no paid run has been executed through the
+harness: the exercise replaced the provider's socket with an in-process transport, so it
+establishes that the pipeline moves and says nothing about model behaviour, timeout
+distribution, or retry rate. Second, such a run is by construction incapable of producing a
+comparable accuracy number, because it has to run on calibration instances --- which every
+arm can see, so Arm A there can read the very output it is asked to reproduce. Envelopes
+therefore carry an explicit \texttt{eligibility} field, calibration-split execution
+envelopes cannot carry an evaluation artifact at all, and a skill or specification frozen
+during such a run is refused by a scored one. Third, Arm C's execution wrapper reproduces
+the existing diagnostic path cell for cell rather than routing through the production
+controller, for a reason recorded as an open defect in Section~\ref{sec:eval:threats}.
+
+The pilot reported in Section~\ref{sec:eval:rq} was run outside this harness and is
+labelled as a pilot for exactly that reason; it must not be read as an Arm A result.
 
 \section{Metrics}
 \label{sec:eval:metrics}
@@ -897,40 +914,64 @@ second reading means publishing with the detector switched off for that document
 asymmetry is the part of the mechanism this thesis actually wants to claim, and it is
 implemented and gated.
 
-\paragraph{At execution time the detector is not wired, and this is a defect rather than a
+\paragraph{At execution time the detector was not wired, and that was a defect rather than a
 boundary.}
 The claim RQ4 needs is stronger than the one above: a frozen artifact meeting a drifted
-template on the run that uses it must fail loudly. Auditing the production path for this
-section found that it does not, in two different ways on the two paths.
+template on the run that uses it must fail loudly. Auditing the production path while writing
+this section found that it did not, in two different ways on the two paths, and both are worth
+recording because the second is the more instructive.
 
 On the DOCX and XLSX path --- the two main evaluation carriers --- no fingerprint comparison
-occurs at all. What does protect that path is a different check: every reference the compiled
+occurred at all. What does protect that path is a different check: every reference the compiled
 plan writes must exist on the template, and a plan naming a reference the template does not
 have is refused with \texttt{TARGET\_NOT\_FOUND} before anything is written. That is a real
 fail-loud behaviour and it covers a real class of drift, namely any change that invalidates a
 reference. It cannot cover the complementary class, and the complement is precisely what the
 fingerprint was built for: a row inserted above a detail area leaves every reference a
-perfectly valid address and changes what that address means. The two mechanisms are
-complementary, and only one of them runs when an instance is produced.
+perfectly valid address and changes what that address means.
 
-On the drawing path a fingerprint comparison is present in the code and returns
-\texttt{TEMPLATE\_DRIFT\_DETECTED} before any inspection. It compares the specification's
+On the drawing path a fingerprint comparison was present in the code and returned
+\texttt{TEMPLATE\_DRIFT\_DETECTED} before any inspection. It compared the specification's
 fingerprint against a \texttt{structural\_fingerprint} entry in the input artifact's metadata
---- and a search of the repository finds exactly two occurrences of that key: the line that
-reads it, and one test that constructs the metadata by hand. Nothing in the system ever writes
-it. The comparison is therefore unreachable on any real artifact, the guard has never fired,
-and its test is green and will stay green. This is the failure mode Section~\ref{sec:der:gates}
-names as the vacuous guard, and the reason it survived is the one recorded in this thesis's
-verification rule: the only thing exercising the declaration was an input written by the same
-hand as the code.
+--- and a search of the repository found exactly two occurrences of that key: the line that
+read it, and one test that constructed the metadata by hand. Nothing in the system ever wrote
+it. The comparison was therefore unreachable on any real artifact, the guard had never fired,
+and its test was green and would have stayed green. This is the failure mode
+Section~\ref{sec:der:gates} names as the vacuous guard, and the reason it survived is the one
+recorded in this thesis's verification rule: the only thing exercising the declaration was an
+input written by the same hand as the code.
 
-Following the first of the three admissible responses, this is recorded as an implementation
-task with the claim it blocks named, and the claim is labelled in the meantime rather than
-softened. Until the production input is fingerprinted, RQ4's ``does the compiled method fail
-loudly'' is answered at review time and, on the office carriers, by reference existence at run
-time; it is \emph{not} answered by drift detection at run time. The bias direction is towards
-the proposed method: an unwired detector reported as a fail-loud property would credit the
-method with a refusal it cannot currently make.
+\paragraph{It is now wired, and one measurement had to be corrected to wire it correctly.}
+Following the first of the three admissible responses, the comparison was moved ahead of the
+carrier branch so both paths share a single comparison site, and the production run now
+computes the fingerprint of each template it is about to write and records it on that
+artifact --- which is what finally gives the key a producer. The office carriers can be
+re-fingerprinted in process; the drawing path still reads a recorded value, because a
+drawing's structure needs the CAD host, and that asymmetry is inherent rather than a
+duplicated rule.
+
+The repair is verified on the real evaluation templates rather than on fixtures: a run over
+the unmodified spreadsheet template records the expected fingerprint on its artifact, a
+variant with one row inserted inside the form is refused with
+\texttt{TEMPLATE\_DRIFT\_DETECTED}, a plain library round trip of the same file is
+\emph{not} refused, and a specification pointing at a sheet the template lacks is still
+refused with \texttt{TARGET\_NOT\_FOUND}. The last two are what make the first two evidence
+rather than assertion: without the round trip a moved fingerprint would only show that the
+spreadsheet library rewrote the file, and without the missing-sheet case the drift code would
+merely be the new name for every failure.
+
+One thing the repair had to get right is worth stating, because the obvious design is the
+wrong one. If the run-time verdict were read from the persisted metadata rather than computed
+from the bytes in hand, then a metadata write silently failing would silently switch drift
+detection off again --- the same defect in a new place. It is computed, the persisted value is
+provenance, and the write is pinned by a test on the real controller. That test earned its
+place immediately: the first version of the write named a timestamp column the artifact model
+does not have, the exception was swallowed by the deliberately broad error handler around a
+best-effort write, and the key went unwritten exactly as before.
+
+What this does \emph{not} settle is the scope of the claim. Fixing detection does not create
+the drift experiment: the variant generator still does not exist, so RQ4 gains a working
+control and no numbers. The classes the fingerprint cannot see, carried below, are unchanged.
 
 \subsection{What Does Not Exist}
 
@@ -970,13 +1011,16 @@ identically for an arm that declares nothing.
     the trade Section~\ref{sec:eval:randomness} discusses.
 \end{description}
 
-\paragraph{Status: normative, with one component implementation-backed and one defect
-disclosed.}
-The fingerprint's sensitivity is measured on both real evaluation templates, and the publish
-gate's two-way refusal is implemented and tested. The execution-time comparison is unreachable
-on the drawing path and absent on the office paths, and is recorded as an open implementation
-item. The variant generator does not exist and no drift experiment has been run, so every
-number this section describes is a plan. Where the design is claimed without evidence, the bias
+\paragraph{Status: detection implementation-backed on both carriers; the experiment
+normative.}
+The fingerprint's sensitivity is measured on both real evaluation templates; the publish
+gate's two-way refusal is implemented and tested; and as of 2026-08-24 so is the
+execution-time comparison, which now runs ahead of the carrier branch, is shared by both
+paths, and is verified on the real spreadsheet template against a row-inserted variant with a
+library round trip as its control. What remains normative is the experiment, not the
+mechanism: the variant generator does not exist and no drift experiment has been run, so every
+\emph{number} this section describes is still a plan, and the classes the fingerprint cannot
+see bound what those numbers could show. Where the design is claimed without evidence the bias
 runs towards the proposed method, and Section~\ref{sec:eval:threats} repeats it there.
 
 \section{Ablations}
@@ -1434,6 +1478,29 @@ the same rule document and see the same calibration instances with their expecte
 a shared misreading penalizes whichever arm reads the rules correctly, and nothing in the
 protocol determines which.
 
+\paragraph{T14 --- Arm C is measured through a path the product does not take.}
+Arm C's execution leg in the harness resolves the source data, compiles, and writes with the
+production system's own functions, and its output has been checked cell for cell against the
+diagnostic path that produced every Arm C figure recorded so far --- five instances, 380 cells,
+identical, with an input-level and a cell-level negative control. What it does not do is enter
+through the production controller, and that is not a stylistic choice: the controller requires
+every reference a plan writes to already exist on the template, which is the right question for
+a document but the wrong one for a spreadsheet, where a repeat slot is by definition an empty
+cell. Measured on the spreadsheet dataset, the controller rejects 138 of the 142 references its
+own specification writes, while the addressability test the derivation-time tools were corrected
+to use accepts all 142. The document dataset passes with none missing, which is why this went
+unnoticed: the only dataset ever driven through that path is the DOCX one.
+
+The consequence for this chapter is narrow but real. Arm C's numbers are produced by the
+compiler and the write adapter, which are the components the zero-execution-LLM claim is about,
+and those are unaffected. The claim that is affected is the implicit one that the arm under test
+is the shipping system: on the spreadsheet carrier it currently is not, because the shipping
+entry point refuses the specification. This is recorded as an open implementation item with the
+one-line correction identified, and it is disclosed here rather than resolved in place because
+changing a guard on the execution path requires re-checking the guards behind it. The bias
+direction favours the proposed method: a reader would otherwise credit the deterministic arm
+with an end-to-end production path it does not yet have on one of the two carriers.
+
 \paragraph{T13 --- two responses to the pilot that were rejected, and why.}
 After the pilot in Section~\ref{sec:eval:rq} showed the per-instance baseline to be
 semantically accurate, two adjustments were available and both were declined. Increasing task
@@ -1443,8 +1510,8 @@ Recording them here is part of the claim: the emphasis of this thesis moved to c
 cost structure \emph{because} the baseline was accurate, not because the tasks were made
 harder.
 
-\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12; normative for
-T3, T4, T8, T11, T13.}
+\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14; normative
+for T3, T4, T8, T11, T13.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
