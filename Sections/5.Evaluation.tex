@@ -1478,28 +1478,40 @@ the same rule document and see the same calibration instances with their expecte
 a shared misreading penalizes whichever arm reads the rules correctly, and nothing in the
 protocol determines which.
 
-\paragraph{T14 --- Arm C is measured through a path the product does not take.}
-Arm C's execution leg in the harness resolves the source data, compiles, and writes with the
-production system's own functions, and its output has been checked cell for cell against the
-diagnostic path that produced every Arm C figure recorded so far --- five instances, 380 cells,
-identical, with an input-level and a cell-level negative control. What it does not do is enter
-through the production controller, and that is not a stylistic choice: the controller requires
-every reference a plan writes to already exist on the template, which is the right question for
-a document but the wrong one for a spreadsheet, where a repeat slot is by definition an empty
-cell. Measured on the spreadsheet dataset, the controller rejects 138 of the 142 references its
-own specification writes, while the addressability test the derivation-time tools were corrected
-to use accepts all 142. The document dataset passes with none missing, which is why this went
-unnoticed: the only dataset ever driven through that path is the DOCX one.
+\paragraph{T14 --- Arm C now enters through the production controller, and the residual gap is
+per-carrier evidence rather than per-carrier capability.}
+For most of this work Arm C's execution leg did not enter through the production controller,
+and that was not a stylistic choice. The controller required every reference a plan writes to
+already \emph{hold something} on the template, which is the right question for a document and
+the wrong one for a spreadsheet, where a repeat slot is by definition an empty cell. Measured on
+the spreadsheet dataset, the controller rejected 138 of the 142 references its own specification
+writes, while the addressability test the derivation-time tools had already been corrected to
+use accepts all 142; the document dataset passed with none missing, which is exactly why it went
+unnoticed for so long --- the only dataset ever driven through that path was the DOCX one.
 
-The consequence for this chapter is narrow but real. Arm C's numbers are produced by the
-compiler and the write adapter, which are the components the zero-execution-LLM claim is about,
-and those are unaffected. The claim that is affected is the implicit one that the arm under test
-is the shipping system: on the spreadsheet carrier it currently is not, because the shipping
-entry point refuses the specification. This is recorded as an open implementation item with the
-one-line correction identified, and it is disclosed here rather than resolved in place because
-changing a guard on the execution path requires re-checking the guards behind it. The bias
-direction favours the proposed method: a reader would otherwise credit the deterministic arm
-with an end-to-end production path it does not yet have on one of the two carriers.
+That defect is now fixed, and the fix was verified against the stored specifications rather than
+against purpose-built inputs: the spreadsheet specification goes from 138 rejected references to
+none, the document specification stays at none out of 70 and none out of 98, and on the document
+carrier the two tests return not merely equal counts but the identical set of references. The
+guard remains reachable in each shape a reference can be wrong --- a sheet that is absent, a
+defined name that is absent, a bookmark that is absent --- because a check that refuses nothing
+is worse than no check at all. Arm C consequently runs through the shipping entry point for the
+first time, and its output on five calibration and development instances of the spreadsheet
+dataset is byte-for-byte identical to the diagnostic path that produced every Arm C figure
+recorded so far, across 380 compared cells, with both an input-level and a cell-level negative
+control.
+
+Two residues remain and are stated rather than resolved. First, the end-to-end comparison exists
+only on the spreadsheet carrier: the document dataset has no equivalent diagnostic path to
+compare against, so the evidence that the arm under test is the shipping system rests on unit
+tests there rather than on a cell-level identity. Second, relaxing that guard promoted the writer's
+own refusal to sole responsibility for a narrow class --- a coordinate covered by a merged range
+--- which changes how such a case is reported without changing whether it fails; nothing is
+stored either way. Neither residue affects any figure in this chapter, because Arm C's numbers
+are produced by the compiler and the write adapter, the components the zero-execution-LLM claim
+is actually about. The bias direction of what remains still favours the proposed method: a reader
+would otherwise credit the deterministic arm with cell-level end-to-end evidence on both carriers
+when it exists on one.
 
 \paragraph{T13 --- two responses to the pilot that were rejected, and why.}
 After the pilot in Section~\ref{sec:eval:rq} showed the per-instance baseline to be
