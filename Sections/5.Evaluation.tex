@@ -512,6 +512,16 @@ evidence schema, the parity audit passed, each workspace contained exactly the a
 envelope authorized and nothing else, and the frozen skill was unchanged afterwards in both
 the canonical file and the copy mounted for the agent.
 
+One runtime-level input gap found by that run has since been closed. The OpenCode server had
+declared a product-specific common prompt as a server-level instruction, so its bytes reached
+every benchmark session without appearing in the envelope's prompt hash. The server now has no
+global instruction resource: that common prompt is composed only into the three named product
+agents, none of which the benchmark uses. This is a scoping fix rather than an envelope-schema
+expansion. In OpenCode 1.17.18, a message-level \texttt{system} value is appended after the
+configured instructions rather than replacing them, so it could not have removed the hidden
+input. The resolved runtime configuration was checked after the change: no global instruction
+remained, while each product agent retained exactly one copy of the common prompt.
+
 What that run establishes is narrower than it looks, and one of its limits is the more
 interesting result. First, it says nothing about behaviour on sealed instances, and nothing
 about retry distribution: the retry policy allows a single attempt, so the observed zero is
