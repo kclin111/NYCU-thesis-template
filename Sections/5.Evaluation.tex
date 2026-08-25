@@ -493,7 +493,7 @@ protocol violation and reported rather than silently tolerated. This matters bec
 failure it prevents --- an agent quietly improving its own skill between instances --- would
 convert Arm B into a per-instance arm while still being reported as a frozen one.
 
-\paragraph{Status: contract and adapters implementation-backed, no paid run executed.}
+\paragraph{Status: implementation-backed, including one executed paid run.}
 The three-arm input and evidence contract is frozen and tested: the truth-free input
 manifest, the hashable envelope, the Arm B freeze, namespace isolation for Arm C, retention
 of raw attempt evidence, and fake-capture negative controls are all implemented. As of
@@ -503,20 +503,42 @@ five arm/phase seams have been driven end to end on the calibration split of bot
 datasets, with every attempt record validated against the frozen evidence schema and the
 cross-arm parity audit passing.
 
-Three limits on that statement matter. First, no paid run has been executed through the
-harness: the exercise replaced the provider's socket with an in-process transport, so it
-establishes that the pipeline moves and says nothing about model behaviour, timeout
-distribution, or retry rate. Second, such a run is by construction incapable of producing a
-comparable accuracy number, because it has to run on calibration instances --- which every
-arm can see, so Arm A there can read the very output it is asked to reproduce. Envelopes
-therefore carry an explicit \texttt{eligibility} field, calibration-split execution
-envelopes cannot carry an evaluation artifact at all, and a skill or specification frozen
-during such a run is refused by a scored one. Third, Arm C's execution wrapper reproduces
-the existing diagnostic path cell for cell rather than routing through the production
-controller, for a reason recorded as an open defect in Section~\ref{sec:eval:threats}.
+On 2026-08-25 the harness additionally drove a real provider. Three OpenCode sessions ---
+Arm A's execution, and both of Arm B's phases --- ran on one S4 calibration instance against
+\texttt{gpt-5.6-sol}, taking $8$ minutes $38$ seconds and $101{,}426$ input, $13{,}868$
+output, $5{,}197$ reasoning and $445{,}440$ cached-read tokens across $27$ assistant
+messages and $46$ tool calls, with no retries. Every attempt validated against the frozen
+evidence schema, the parity audit passed, each workspace contained exactly the artifacts its
+envelope authorized and nothing else, and the frozen skill was unchanged afterwards in both
+the canonical file and the copy mounted for the agent.
+
+What that run establishes is narrower than it looks, and one of its limits is the more
+interesting result. First, it says nothing about behaviour on sealed instances, and nothing
+about retry distribution: the retry policy allows a single attempt, so the observed zero is
+structural rather than measured. Second, a dry run is by construction incapable of producing
+a comparable accuracy number, because it must run on calibration instances --- which every
+arm can see. Envelopes therefore carry an explicit \texttt{eligibility} field,
+calibration-split execution envelopes cannot carry an evaluation artifact at all, and a skill
+or specification frozen during such a run is refused by a scored one.
+
+Third, and this was not anticipated: the same construction also prevents the run from
+measuring Arm A's per-instance \emph{cost}. Because the fairness clause gives Arm A every
+calibration expected document, and a dry run's target instance is necessarily a calibration
+instance, the correct answer sits in Arm A's working directory. It was used: Arm A's two
+documents were byte-identical to that instance's expected output, and its own reply stated
+exact agreement with the matching calibration case. Arm B's execution phase is not exposed
+this way --- its envelope authorizes only the template, the instance inputs and the frozen
+skill --- so its figures are usable and Arm A's are not. The consequence is recorded as a
+protocol rule in Section~\ref{sec:eval:cost}: an Arm A per-instance cost may only come from
+a \texttt{formal} run.
 
 The pilot reported in Section~\ref{sec:eval:rq} was run outside this harness and is
-labelled as a pilot for exactly that reason; it must not be read as an Arm A result.
+labelled as a pilot for exactly that reason; it must not be read as an Arm A result. That
+pilot also supplied this chapter's only prior token figures, and the live run corrected the
+argument built on them. The pilot was treated as a lower bound because the protocol's Arm A
+sees strictly more material --- measured, $3.5$ times the files. Its input tokens were none
+the less two to four times \emph{higher} than the harness run's, because staged material is
+not context: an arm pays for what it opens, not for what it is authorized to see.
 
 \section{Metrics}
 \label{sec:eval:metrics}
@@ -642,6 +664,7 @@ Reporting execution identity without derivation variance would misstate RQ2, and
 Section~\ref{sec:eval:reruns} defines the measurement that prevents it.
 
 \subsection{Cost}
+\label{sec:eval:cost}
 
 \paragraph{The unit of record is tokens; money is a derived and labelled quantity.}
 This has to be settled explicitly, because the obvious choice fails on the available data.
@@ -673,13 +696,41 @@ repair calls; that asymmetry is itself informative, since a repair re-sends a la
 produce a very small proposal. Derivation wall-clock ranged from $323$ to $986$ seconds with a
 median of $607$.
 
-\paragraph{The denominator that is empty, stated plainly.}
-Not one of the numbers above is a baseline cost. No per-instance cost for Arm A or Arm B has
-been measured, all $26$ recorded calls used a single model, and the figures span three
-datasets and several months of implementation change. $N^{*}$ is therefore currently
-undefined, and this is the largest empty denominator in this chapter. It is recorded here
-rather than left to the results section, because a cost argument whose baseline is missing is
-the kind of claim that quietly becomes an assumption.
+\paragraph{The denominator that was empty, and the half of it that now is not.}
+None of the numbers above is a baseline cost; they are all derivation-side. Until 2026-08-25
+no per-instance cost for either baseline had been measured at all, which made $N^{*}$
+undefined and was the largest empty denominator in this chapter. One live harness run closed
+half of it. Arm B's execution phase, working from its frozen skill on a single instance, used
+$31{,}564$ input, $7{,}815$ output, $1{,}907$ reasoning and $144{,}384$ cached-read tokens
+over $9$ assistant messages in $219$ seconds, with a one-off skill build costing $35{,}977$
+input and $3{,}891$ output tokens over $7$ messages. Those are usable figures: Arm B's
+execution envelope authorizes only the template, that instance's source files and the frozen
+skill, so nothing resembling an answer is reachable from its workspace.
+
+\paragraph{Why the other half cannot be closed by a dry run, ever.}
+Arm A's figures from the same run are not a per-instance cost, and no amount of repeating the
+exercise would make them one. A dry run may only touch calibration instances, because the
+evaluation instances are sealed; the fairness clause requires Arm A to see every calibration
+expected document; therefore the target instance's correct output is necessarily sitting in
+Arm A's working directory. It was used --- the two documents Arm A produced were
+byte-identical to that instance's expected output, and its own reply reported exact agreement
+with the matching calibration case. Its $33{,}885$ input tokens measure the cost of
+recognising an answer that was already present. The rule this fixes is stated in the protocol
+rather than worked around in code: an Arm A per-instance cost may enter $N^{*}$ only from a
+run whose eligibility is \texttt{formal}. This is the same boundary that forbids reporting a
+dry run's accuracy, noticed one argument later --- the accuracy consequence had been written
+down in advance, the cost consequence had not, and three documents had promised that this run
+would produce a baseline per-instance cost.
+
+\paragraph{What the same run says about estimating cost at all.}
+The pre-run estimate for these three sessions was $175$--$650$ thousand input tokens; the
+measurement was $101{,}426$, below the lower bound, as were output, reasoning, cached reads
+and wall-clock. The estimate was not merely imprecise, its argument was inverted: it scaled
+the earlier pilot's per-instance tokens up because the protocol's Arm A is authorized to see
+$3.5$ times as many files. Authorized material is not context. An agent pays for what it
+opens, and this one opened little --- six globs, five shell commands, two patches. Any cost
+projection in this chapter is therefore a projection over agent behaviour, not over dataset
+size, and the two do not move together.
 
 \subsection{Rule Coverage Is an Arm C Diagnostic}
 
@@ -1218,10 +1269,12 @@ or unmeasured.
     not the number of instances in existence but the number executed \emph{per specification
     lifetime}, which template drift shortens: a form revised every quarter resets the
     amortization every quarter, which is why Section~\ref{sec:eval:drift} is a cost question as
-    much as a correctness one. This quantity is \emph{unmeasured}, and in a specific way that
-    matters: there is no per-instance cost for any baseline at all, because no live baseline
-    adapter has been run. The break-even point is not currently large or small; its denominator
-    is empty.
+    much as a correctness one. This quantity is \emph{partly measured}, and the part that is missing
+    is specific. Arm B now has a per-instance execution cost, taken from a live harness run.
+    Arm A does not, and cannot until a scored run: the only instances a dry run may touch are
+    ones whose expected output Arm A is entitled to see, and it used it
+    (Section~\ref{sec:eval:cost}). The break-even point is therefore still not large or small,
+    but its denominator is now half-populated rather than empty.
   \item[C-ii --- derivation succeeds too rarely.] If the expected number of derivation attempts
     before a publishable specification is $k$, the amortized derivation cost is multiplied by
     $k$, and a large enough $k$ removes the advantage at any $N$. This quantity is also
