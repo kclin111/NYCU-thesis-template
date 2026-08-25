@@ -114,13 +114,14 @@ The split has two levels, and only the first of them currently holds in full.
 \paragraph{Instance level.}
 Every evaluation template carries ten instances: $K=3$ calibration instances, shared by all
 three arms and the only instances any arm may see during construction; two development
-instances used for debugging; and $M=5$ sealed evaluation instances that no arm sees at any
-stage. Two of the five evaluation instances in each dataset are cases whose \emph{correct}
-behaviour is a refusal, so that an arm which always produces a file cannot score well merely
-by producing files.
+instances used for debugging; and $M=5$ evaluation instances that no arm may see at any
+stage after sealing. S4 and X1 each contain two refusal cases; S5 contains one. Thus every
+dataset tests the case in which producing a plausible file is itself the wrong behaviour.
+As of 25 August 2026, S4 and X1 are sealed, while S5 remains at the pre-seal boundary described
+below.
 
 \paragraph{Template level.}
-The evaluation templates are two, with a third planned:
+Three evaluation-template artifacts now exist, but only two are sealed and formal-ready:
 
 \begin{itemize}
   \item \textbf{S4} (DOCX): a Commercial Invoice and a Packing List produced together from a
@@ -133,8 +134,14 @@ The evaluation templates are two, with a third planned:
     report. Its principal difficulties are a cross-file collection of source artifacts and a
     layout in which one logical record occupies two physical rows. Twenty-seven applicable
     rules.
-  \item \textbf{S5} (XLSX, not yet built): a credit-programme completion audit, chosen for
-    its density of negative obligations.
+  \item \textbf{S5} (XLSX, pre-seal): a faithful spreadsheet transcription of National
+    Taiwan University Public Health's circulating Health Big Data Credit Programme
+    certificate form. It has eight fixed course slots and combines course lookup, repeat
+    resolution, approved credit substitution, category thresholds, prerequisites, course-code
+    history, stale-slot clearing, and a missing-source refusal. Nineteen applicable rules.
+    Its three calibration, two development and five evaluation literals, independent oracle,
+    output-only aggregate cross-check and eight-channel mutations are built; the required
+    per-instance human spot audit and evaluation seal are not.
 \end{itemize}
 
 Two further items must be named, because their absence changes how the split reads.
@@ -196,9 +203,10 @@ level, with the bias direction stated.}
 % 本節是 S5 的驗收條件，不是 S4／X1 的描述。每一條約束都附上兩份既有資料集的檢查結果。
 
 This subsection states what an evaluation dataset must satisfy, as conditions that can be
-checked before the dataset is used rather than as a description of the two that exist. The
-ordering is deliberate: the third template is not yet built, and this list is its acceptance
-criteria.
+checked before the dataset is used rather than inferred from the artifacts afterward. The
+ordering was deliberate: these conditions were frozen before S5 was built. S5 is now checked
+against them but remains pre-seal, so the checklist is also the exact boundary between
+``constructed'' and ``formal-ready''.
 
 That ordering also guards against a specific failure of this kind of writing. A constraint
 written after the artifacts it governs tends to be satisfied by construction, and a constraint
@@ -415,8 +423,9 @@ a shared misreading penalizes whichever arm reads the rules correctly, and nothi
 protocol says which arm that would be.
 
 \paragraph{Acceptance criteria for the third template.}
-Restated as a checklist, because it is what the next dataset will be checked against: a
-template that really circulates, retained with its provenance and unmodified; a rule document
+Restated as a checklist, because it is what S5 is checked against: a
+template that really circulates, retained with its provenance and either unmodified or
+faithfully converted with the conversion boundary recorded; a rule document
 containing no write coordinate of any kind; a generator that imports no product code except in
 a probe that feeds no expected value; expected artifacts recorded with their digests and able
 to reach every scored channel including package integrity; three calibration, two development
@@ -428,18 +437,28 @@ one output-only detector, with a cross-check wherever the target form makes one 
 all six annotation capabilities exercised; and the spot check performed and recorded on every
 instance rather than on one.
 
-\paragraph{Status: implementation-backed for the mechanisms, with one condition measured as
-unsatisfied, one structural absence explicitly accepted, and one procedural requirement measured
-as largely undone.}
+S5 satisfies every mechanical and artifact-existence item before the final semicolon. Its
+sources are four publicly downloadable files from the same programme, pinned by SHA-256 and
+retained with the public-access-but-no-open-licence boundary; the circulating DOCX form is
+transcribed without adding a business field. Its rules contain no write address. Nine success
+oracles preserve the XLSX package while the refusal produces no artifact. The shared linter
+reports zero problems, all ten oracle cases score cleanly, every success has one actual-output
+cross-check, all three wrong-extent hypotheses discriminate on at least one evaluation case,
+and one material mutation turns each of the eight scoring channels red from a green baseline.
+The remaining item is procedural and deliberately cannot be discharged by those results:
+the signed human audit over all ten cases and the seal made from it do not yet exist.
+
+\paragraph{Status: implementation-backed for the mechanisms; S5 is constructed but not sealed.}
 The generators, the two schemas, the per-dataset validators with their negative controls, the
 hypothesis computation and the refusal shape are implemented and are in the repository; every
 count in this subsection was read from the stored manifests and ground truths rather than
-estimated. One condition remains unsatisfied by the XLSX dataset --- no excluded member in its
-declared extent. Its zero cross-check count is a different, structural case: the target has no
-output aggregate, and the versioned policy reason is now an enforced lint decision rather than
-a silent absence. The shared evaluator consumes every output-scoreable declaration for both
-carriers. The dual annotation and the per-instance spot check are normative: the requirement stands, the
-measured shortfall is two instances out of twenty-eight, and the bias direction is undetermined.
+estimated. S5 closes the excluded-member and output-aggregate gaps: it contains blank, note and
+course-shaped pollution rows, and its written total is checked against the sum of written
+course-credit slots. X1's zero cross-check count remains a different, structural case with a
+versioned policy reason. The residual shortfall is the human check itself. Before S5, two of
+twenty-eight stored cases carried recorded spot checks; adding ten pre-seal S5 cases makes the
+current record two of thirty-eight. Automated workbook-side recomputation is 10/10 but is not
+counted as human review. The bias direction remains undetermined.
 
 \section{Baselines and Fairness}
 \label{sec:eval:baselines}
@@ -1179,7 +1198,7 @@ anywhere in this thesis on the strength of the sweep alone.
 The formal experiment has not been run, and this section carries no figures. What is settled is
 the shape in which they will be reported: one row per evaluation template with no average across
 templates, because carriers may not be pooled into a single accuracy; the per-channel
-denominators of Section~ef{sec:eval:metrics} kept separate rather than aggregated; and any
+denominators of Section~\ref{sec:eval:metrics} kept separate rather than aggregated; and any
 externally sourced template reported in its own subsection rather than inside that average, since
 it answers a validity question rather than a capability one. The subsection below is written now
 because it does not depend on the numbers.
@@ -1502,9 +1521,10 @@ of unresolved items must be decomposed before it is interpreted, and a headline
 \label{sec:eval:threats:mixed}
 
 \paragraph{T8 --- dataset scale.}
-Two evaluation templates exist and a third is planned, against an original intention of three
-to five per carrier. Conclusions must be descriptive; no statistical significance may be
-claimed, and no single average may be taken across carriers.
+Two evaluation templates are sealed and a third has reached the pre-seal human-audit boundary,
+against an original intention of three to five per carrier. Even after S5 is sealed, three
+templates support descriptive conclusions only: no statistical significance may be claimed,
+and no single average may be taken across carriers.
 
 \paragraph{T9 --- the inclusion criterion is itself skewed.}
 The datasets admit only tasks whose target row count is fixed, because the write side
