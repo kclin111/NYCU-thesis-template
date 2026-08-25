@@ -188,7 +188,8 @@ level, with the bias direction stated.}
 % (1) 「五種必要能力」是 2026-08-15 的計數。refusal（標註手冊 §4.6b）是之後才定案的，
 %     它不在那五種裡，而 ground-truth schema 對它有結構性強制。實際是六種。
 % (2) 「每個 aggregate 欄位必須配一個獨立的交叉驗證欄位」——X1 一條 cross_check 都沒有，
-%     而且共用 evaluator 從頭到尾沒有讀過那個鍵（grep benchmark/evaluator：0 筆）。
+%     因為目標表單沒有輸出 aggregate；D5 已把零條理由與 aggregate coverage 接進共用 lint，
+%     並把可表達的 cross_check 接進兩種載體的共用 scorer。
 % (3) 「generator 與 production compiler/adapter 獨立」在 ADR 0012 之後的正確說法是
 %     「期望值不得由 production 程式碼產生」，不是「不得 import」——X1 的 validate.py
 %     刻意 import source_locator 當可讀性探針，並明寫它不餵任何期望值。
@@ -316,7 +317,7 @@ is precisely the silent-failure shape the thesis is about: every number in the d
 correct and the document is still wrong, and no amount of checking the arithmetic finds it.
 
 \paragraph{Condition 3 --- every aggregate needs a detector computed from the output alone, and
-one of the two datasets has only the weaker one.}
+zero declared checks require an auditable reason.}
 Extent correctness is the one channel an arm could report on itself, and Arm C can: its
 resolved extents are explicit. Arms A and B produce a document and no provenance. Scoring a
 channel from the scored system's own declaration would repeat the mistake the coverage
@@ -324,36 +325,33 @@ denominator once made, so the instrument has to be computed from the output.
 
 The annotation manual and the manifest schema state the condition in its strongest form: every
 sum-type aggregate field must be covered by at least one cross-check, an identity between two
-independently scored fields of the same output. The DOCX dataset satisfies it --- seven
-cross-checks cover all six of its totals, and its own validator fails if any sum-type aggregate
-is left uncovered. The XLSX dataset declares \emph{none}, and its validator contains no such
-check. The reason is structural rather than an oversight: its target form lists one row per
-project and never totals anything, so there is no second output field with which to form an
-identity.
+independently scored fields of the same output. The shared dataset lint now enforces aggregate
+coverage and validates each expression against its declared fields. The DOCX dataset satisfies
+the condition: seven checks cover all six totals. The XLSX evaluation dataset declares none
+because its target form lists one row per project and has no output aggregate. That zero is no
+longer indistinguishable from omission: a versioned evaluator-policy artifact records the
+structural reason, shared lint accepts it, and deleting or corrupting the reason makes lint fail.
+The policy is external to the frozen annotation manifest, so adding this enforcement did not
+rewrite any sealed truth digest.
 
-Three consequences have to be recorded, because each is a gap rather than a nuance.
+The consumer is carrier-neutral and arm-symmetric. It parses only the frozen expression form,
+resolves scalar values and slot-column totals from the produced artifact, evaluates with decimal
+arithmetic and the manifest tolerance, and never reads an expected value to fill a missing
+operand. An unknown identifier, a missing or non-numeric output value, or disagreement between
+an expression and its declared field list produces a failed check or a lint error rather than a
+skipped denominator. The resulting \texttt{crosscheck/<id>} measurements form an eighth,
+independent correctness channel; they are not folded into semantic accuracy. A controlled
+mutation in which a total is changed by one leaves the artifact structurally sound and its
+detail semantics correct, but changes the case outcome to \texttt{silent\_failure} through this
+channel.
 
-First, the strong form of the condition is not implemented anywhere. The declared cross-checks
-are evaluated at construction time against the ground truth, where they catch a generator whose
-total disagrees with its own detail. The shared evaluator never reads them. The output-only,
-arm-symmetric instrument that \emph{is} implemented is the hypothesis attribution of Condition
-2, which names a wrong extent from the produced document without asking any arm anything.
-Section~\ref{sec:eval:extentasymmetry} is corrected accordingly, and the missing plumbing is
-recorded as an open item rather than described as present.
-
-Second, the checkable condition is therefore the weaker and more general one: every aggregate
-must have at least one detector computed from the output alone. The DOCX dataset has two,
-cross-checks and hypotheses. The XLSX dataset has hypotheses plus two file-level declared
-quantities that a wrong grouping must contradict --- a submitted-sheet count and a project
-count, which check different quantities and each carry one of that dataset's two refusal cases.
-What it does not have, and what the strong form would have given it, is any detector for a
-wrong extent \emph{within} a sheet whose swallowed rows contribute zero. That failure is
-invisible to it, and it is the same shape Condition 2 identifies as the thesis's central case.
-
-Third, and this is why the condition is restated here rather than left to the manual: it is
-enforced by hand-written per-dataset validators. Two of the three datasets check it; one does
-not. An unenforced constraint and a satisfied constraint produce identical evidence, which is
-the failure mode this study has met repeatedly in its own metric plumbing.
+The boundary remains important. Cross-checks detect an inconsistent aggregate; they cannot
+detect compensating detail errors whose sum is unchanged, nor a detail and total that were both
+computed from the same wrong interpretation. Extent hypotheses remain necessary for the former
+class of zero-contribution boundary error, and independent annotation audit remains necessary
+for the latter. On the pilot XLSX dataset, three scalar identities are output-scoreable while
+three identities over source-only ranges remain explicitly truth-side-only; the policy records
+that boundary instead of letting the evaluator substitute ground truth.
 
 \paragraph{Condition 4 --- the annotation format needs six capabilities, not the four the
 protocol lists.}
@@ -430,16 +428,17 @@ one output-only detector, with a cross-check wherever the target form makes one 
 all six annotation capabilities exercised; and the spot check performed and recorded on every
 instance rather than on one.
 
-\paragraph{Status: implementation-backed for the mechanisms, with two conditions measured as
-unsatisfied and one procedural requirement measured as largely undone.}
+\paragraph{Status: implementation-backed for the mechanisms, with one condition measured as
+unsatisfied, one structural absence explicitly accepted, and one procedural requirement measured
+as largely undone.}
 The generators, the two schemas, the per-dataset validators with their negative controls, the
 hypothesis computation and the refusal shape are implemented and are in the repository; every
 count in this subsection was read from the stored manifests and ground truths rather than
-estimated. Two conditions are reported as not satisfied by the XLSX dataset --- no excluded
-member in its declared extent, and no cross-check for its aggregates --- and are carried as
-recorded boundaries with their substitutes named. The strong form of the cross-check condition
-has no consumer in the scoring path at all and is recorded as an open implementation item. The
-dual annotation and the per-instance spot check are normative: the requirement stands, the
+estimated. One condition remains unsatisfied by the XLSX dataset --- no excluded member in its
+declared extent. Its zero cross-check count is a different, structural case: the target has no
+output aggregate, and the versioned policy reason is now an enforced lint decision rather than
+a silent absence. The shared evaluator consumes every output-scoreable declaration for both
+carriers. The dual annotation and the per-instance spot check are normative: the requirement stands, the
 measured shortfall is two instances out of twenty-eight, and the bias direction is undetermined.
 
 \section{Baselines and Fairness}
@@ -569,7 +568,7 @@ part that has silently moved a headline figure four times in this project's reco
 
 \subsection{Correctness}
 
-Correctness is partitioned into the seven channels of Section~\ref{sec:eval:channels}, each
+Correctness is partitioned into the eight channels of Section~\ref{sec:eval:channels}, each
 with its own denominator and never averaged into one another. The denominator of each channel
 is the set of checks the dataset's annotation manifest declares with that channel's prefix;
 the manifest is authored per template, frozen, and shared by all three arms, and a check whose
@@ -597,7 +596,7 @@ reported separately \emph{and} counted in the case-level correctness predicate.
 
 \paragraph{Case-level rates, and why there are two.}
 \texttt{passed} is a case in which every correctness channel --- semantic, extent, refusal,
-structure --- is entirely correct. \texttt{clean} is \texttt{passed} with no preservation
+structure, crosscheck --- is entirely correct. \texttt{clean} is \texttt{passed} with no preservation
 violation, that is, with untouched and integrity also intact. The split is not decoration:
 compressing ``answered wrongly'' and ``damaged the file'' into one rate makes them
 indistinguishable, and their repairs have nothing in common. Presentation enters neither rate.
@@ -757,9 +756,9 @@ reported with the derivation results, never in the main table.
 
 \paragraph{Status: implementation-backed for the channel definitions and the identity
 instrument; normative for the cost metrics.}
-The seven channels, their fail-closed classification, the two case-level rates and the outcome
-classification are implemented in \texttt{benchmark/evaluator/scoring.py} under a frozen policy
-version, with negative controls per channel. The identity instrument is backed by the
+The eight channels, their fail-closed classification, the two case-level rates and the outcome
+classification are implemented by the shared scoring module under a frozen policy version,
+with negative controls per channel. The identity instrument is backed by the
 measurement in Table~\ref{tab:eval:identity}, taken on the two real evaluation templates. The
 cost metrics are a plan: the ruling on units is made here, the harness records the fields, and
 no baseline cost has been measured. The bias direction of that gap favours the proposed method,
@@ -841,9 +840,9 @@ system's error.
 Scores are partitioned into channels, each with its own denominator: \emph{semantic} (the
 primary metric), \emph{extent} (which source rows were included), \emph{refusal} (a case
 whose correct behaviour is to refuse), \emph{structure} (the artifact opens and has the
-expected shape), \emph{presentation} (formatting, reported separately from meaning),
-\emph{untouched} (regions no field declares were not modified), and \emph{integrity} (the
-package's critical parts survived). A check whose prefix is not one of the declared channels
+expected shape), \emph{crosscheck} (output-side identities), \emph{presentation} (formatting,
+reported separately from meaning), \emph{untouched} (regions no field declares were not
+modified), and \emph{integrity} (the package's critical parts survived). A check whose prefix is not one of the declared channels
 fails closed rather than being scored as absent. The policy is versioned, and every result
 record carries the evaluator version, the policy version, the source hash of the scoring
 code, and the repository commit.
@@ -865,8 +864,8 @@ tolerance.
 \paragraph{Reverse.} Controlled corruptions are applied to the expected artifact and the
 evaluator must catch every one. Without this, an evaluator that always answers ``pass'' would
 give every arm a perfect score and the forward test would not notice. The current mutation
-coverage is 6 of 6 on the pilot dataset, 12 of 12 on S4, and 13 of 13 on X1; X1 is the first
-dataset in which \emph{all seven} channels have at least one mutation that exercises them,
+coverage is 6 of 6 on the pilot dataset, 13 of 13 on S4, and 13 of 13 on X1; X1 was the first
+dataset in which all seven pre-crosscheck channels had at least one mutation that exercised them,
 which closed two channels that had previously been structurally vacuous.
 
 \paragraph{A mutation test is not a validity proof, and the gap is specific.}
@@ -906,18 +905,16 @@ provenance. Scoring the extent channel from an arm's own declaration would repea
 mistake that the coverage denominator made in Section~\ref{sec:der:coverage} --- a figure
 self-reported by the system being scored is not a cross-arm metric.
 
-The cross-arm instrument that is implemented is hypothesis attribution: each dataset's manifest
-declares, for every wrong-extent hypothesis, the values that hypothesis would produce, so a
-wrong extent can be \emph{named} from the output alone rather than inferred, and the naming
-asks no arm anything. A second and stronger instrument is declared but is not yet wired into
-scoring, and the distinction has to be stated rather than blurred. Each manifest may declare
-\emph{cross-checks} --- identities between two independently scored fields of the same instance,
-such as a total equalling the sum of its detail --- which any arm's output either satisfies or
-does not. Those declarations are currently evaluated only at dataset construction time, against
-the ground truth, where they catch a generator whose total disagrees with its own detail; the
-shared scoring program never reads them. Section~ef{sec:eval:dataset} records this as an open
-implementation item, along with the consequence that one of the two evaluation datasets declares
-no cross-check at all because its target form totals nothing. The effect is measurable: an output that occupies one extra
+Two cross-arm instruments are implemented. Hypothesis attribution names a wrong extent from the
+produced output without asking any arm anything. Cross-check scoring evaluates manifest-declared
+identities between fields of that same output. The common consumer runs after actual values have
+been extracted for both XLSX and DOCX, accepts only scalar identifiers and sums of declared slot
+columns joined by addition or subtraction, uses decimal tolerance, and fails closed on unknown,
+missing, or non-numeric operands. It neither reuses a generator's truth-side result nor fills an
+operand from the expected artifact. S4 has seven output-side checks; the S3 pilot has three and
+marks three source-range identities as truth-side-only; X1 has none because its target totals
+nothing, with that structural reason enforced by a separate versioned policy artifact.
+The effect of retaining the independent extent instrument remains measurable: an output that occupies one extra
 detail slot while leaving all six totals byte-identical passes all 112 semantic checks on one
 instance and is still identified as a specific wrong-extent hypothesis. Arm C's own resolved
 anchors are reported as supplementary evidence and are explicitly marked as available for one
@@ -925,7 +922,7 @@ arm only; they are never placed in a column alongside A and B.
 
 \paragraph{Status: implementation-backed.}
 The shared evaluator lints, self-tests, and scores all three datasets; the scoring policy is
-frozen at version 1.1.0; the mutation suites and their per-channel negative controls are in
+frozen at version 1.2.0 and the evaluator at version 1.1.0; the mutation suites and their per-channel negative controls are in
 the repository and run in continuous integration. What is not established is the generator's
 own arithmetic, as stated above.
 
