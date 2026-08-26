@@ -1603,11 +1603,29 @@ of unresolved items must be decomposed before it is interpreted, and a headline
 \subsection{Threats of Undetermined or Mixed Direction}
 \label{sec:eval:threats:mixed}
 
-\paragraph{T8 --- dataset scale.}
+\paragraph{T8 --- dataset scale, at both levels, and they are not interchangeable.}
 Two evaluation templates are sealed and a third has reached the pre-seal human-audit boundary,
 against an original intention of three to five per carrier. Even after S5 is sealed, three
 templates support descriptive conclusions only: no statistical significance may be claimed,
 and no single average may be taken across carriers.
+
+% 2026-08-26：加上實例層那一半。原文只談模板數，而頭條指標是案例級的，
+% 分母是 M 不是模板數。數字與成本結構在 TODO M6；M 本身仍未裁定。
+The instance level is a separate limit and it binds a different claim. Field-level accuracy
+rests on a large denominator --- $304$, $226$ and $225$ scored fields on the three templates,
+about $755$ in all --- but the metric this thesis leads with, the silent-failure rate, is a
+proportion over \emph{cases}, and each template contributes $M=5$ evaluation cases of which
+one or two are refusals. A result of zero silent failures on a template therefore carries a
+one-sided $95\%$ upper bound of roughly $45\%$ on the true rate at $M=5$, falling to about
+$10\%$ at $M=30$; and because Section~\ref{sec:eval:channels} forbids averaging a rate across
+carriers, it is the per-template bound that the main table must report, not the pooled one.
+Raising $M$ would tighten that bound and would do nothing for external validity, which is
+bounded by the template count above and by the fact that instances of one template are
+repeated draws from one rule document and one generator. The two limits are often conflated
+and must not be: more instances make ``on these three templates'' precise, not ``on
+template-filling tasks''. Whether $M$ is raised before the formal run is a budget decision
+that has not been taken; it cannot be taken afterwards, because adding evaluation instances
+once an arm has been scored on them is indistinguishable in form from selecting them.
 
 \paragraph{T9 --- the inclusion criterion is itself skewed.}
 The datasets admit only tasks whose target row count is fixed, because the write side
