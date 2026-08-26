@@ -112,13 +112,30 @@ stating why reads as avoiding it.
 The split has two levels, and only the first of them currently holds in full.
 
 \paragraph{Instance level.}
-Every evaluation template carries ten instances: $K=3$ calibration instances, shared by all
-three arms and the only instances any arm may see during construction; two development
-instances used for debugging; and $M=5$ evaluation instances that no arm may see at any
-stage after sealing. S4 and X1 each contain two refusal cases; S5 contains one. Thus every
-dataset tests the case in which producing a plausible file is itself the wrong behaviour.
-As of 25 August 2026, S4 and X1 are sealed, while S5 remains at the pre-seal boundary described
-below.
+Every evaluation template carries $K=3$ calibration instances, shared by all three arms and
+the only instances any arm may see during construction; two development instances used for
+debugging; and $M$ evaluation instances that no arm may see at any stage after sealing. S4
+and X1 each contain two refusal cases; S5 contains one. Thus every dataset tests the case in
+which producing a plausible file is itself the wrong behaviour.
+
+% 2026-08-26：M 由 5 提高到 30（協定 §2.2.1）。裁定已定、資料集尚未擴充，
+% 所以這裡把「設計」與「現況」分開寫，不得只寫其中一個。
+$M$ was set to $30$ on 26 August 2026. It had never actually been decided --- $5$ was a
+placeholder carried from the protocol's first draft --- and the measurement that settled it
+is in Section~\ref{sec:eval:threats:mixed}: the silent-failure rate is a proportion over
+cases, so at $M=5$ a template reporting no silent failures still admits a true rate of $45\%$,
+against about $10\%$ at $M=30$. \textbf{The datasets have not been enlarged yet}: each still
+holds the original five, so every count elsewhere in this chapter that depends on the
+evaluation split describes the current five and not the intended thirty. Enlarging them is
+dataset work that must be finished before the formal run and cannot be done after it, because
+adding evaluation instances once an arm has been scored on them is indistinguishable in form
+from selecting them.
+
+As of 26 August 2026, S4 and X1 are sealed --- and sealed by mechanism rather than by
+convention, which they were not before that date: their generators rewrote every case
+unconditionally, evaluation included, while three documents described them as sealed. A
+shared guard now pins each evaluation file by digest and refuses to regenerate it. S5 remains
+at the pre-seal boundary described below.
 
 \paragraph{Template level.}
 Three evaluation-template artifacts now exist, but only two are sealed and formal-ready:
@@ -429,7 +446,7 @@ faithfully converted with the conversion boundary recorded; a rule document
 containing no write coordinate of any kind; a generator that imports no product code except in
 a probe that feeds no expected value; expected artifacts recorded with their digests and able
 to reach every scored channel including package integrity; three calibration, two development
-and five sealed evaluation instances; at least one sealed refusal with a declared code;
+and $M$ sealed evaluation instances; at least one sealed refusal with a declared code;
 aggregated-set cardinality varying across cases and at least one non-earliest case containing
 an excluded member; every declared wrong-extent hypothesis distinguishable on at least one
 sealed instance, and no hypothesis declared that cannot be; every aggregate covered by at least
@@ -790,12 +807,34 @@ since an unmeasured baseline cost is the one quantity that could move $N^{*}$ ag
 The symmetric design --- every case, every arm, $R$ times --- allocates most of its budget to
 copying files. If the compiled arm's execution is deterministic and calls no model, five runs
 of one specification over one instance produce five identical outputs, and the fifth teaches
-nothing the first did not. The budget is therefore $R=5$ for Arms A and B, where every
-execution is an independent sample of a stochastic process, and $R=1$ for Arm C on the main
-table, with a designated subset run $R=5$ to \emph{demonstrate} the identity rather than to
-average over it, using the normalized digest of Table~\ref{tab:eval:identity}. Skipping the
-demonstration would be assuming what is being claimed; repeating it on every case would be
-measuring the file system.
+nothing the first did not. The budget is therefore $R=1$ for Arm C on the main table, with a
+designated subset run $R=5$ to \emph{demonstrate} the identity rather than to average over it,
+using the normalized digest of Table~\ref{tab:eval:identity}. Skipping the demonstration would
+be assuming what is being claimed; repeating it on every case would be measuring the file
+system.
+
+% 2026-08-26：R 與 M 拆開（協定 §4 的表）。舊設計是 M×R 全乘，
+% 於是提高 M 的成本被放大五倍，而那五倍只服務 RQ2。
+\paragraph{The baselines' reruns are decoupled from $M$, because correctness and consistency
+do not want the same thing.}
+The original design multiplied them: every evaluation instance of Arms A and B was to be run
+$R=5$ times. That spends four fifths of the budget on repeats which serve only the consistency
+question, and the consistency effect is not subtle --- the pilot produced three distinct file
+digests in three runs and a cell-level agreement of $69.2\%$. Correctness wants \emph{many
+instances}; consistency wants \emph{many repeats of one instance}. They are therefore
+separated: Arms A and B run every evaluation instance once for the main table, and a set of
+five instances per template, \emph{declared and frozen in advance}, is run five times for the
+consistency figures. Freezing the choice in advance is not ceremony --- choosing afterwards
+which instances to rerun is a researcher degree of freedom, and a large one. The cost of the
+decoupling is stated rather than hidden: each main-table case now rests on a single
+observation, so ``Arm A was correct on this case'' no longer carries ``and would be every
+time''. That second claim is what the consistency column reports, over five instances per
+template rather than over all $M$.
+
+Arm C's execution is free per instance, which creates a temptation the protocol forbids
+explicitly: running the compiled arm over all $M$ instances while running the baselines over
+fewer would break the parity condition of Section~\ref{sec:eval:baselines} in the method's
+favour. Every arm sees the same instances.
 
 \paragraph{The variance did not disappear. It moved, and it must be measured where it went.}
 Reporting Arm C as having zero variance without qualification invites, and deserves, the
@@ -1614,18 +1653,25 @@ and no single average may be taken across carriers.
 The instance level is a separate limit and it binds a different claim. Field-level accuracy
 rests on a large denominator --- $304$, $226$ and $225$ scored fields on the three templates,
 about $755$ in all --- but the metric this thesis leads with, the silent-failure rate, is a
-proportion over \emph{cases}, and each template contributes $M=5$ evaluation cases of which
-one or two are refusals. A result of zero silent failures on a template therefore carries a
-one-sided $95\%$ upper bound of roughly $45\%$ on the true rate at $M=5$, falling to about
-$10\%$ at $M=30$; and because Section~\ref{sec:eval:channels} forbids averaging a rate across
-carriers, it is the per-template bound that the main table must report, not the pooled one.
-Raising $M$ would tighten that bound and would do nothing for external validity, which is
-bounded by the template count above and by the fact that instances of one template are
-repeated draws from one rule document and one generator. The two limits are often conflated
-and must not be: more instances make ``on these three templates'' precise, not ``on
-template-filling tasks''. Whether $M$ is raised before the formal run is a budget decision
-that has not been taken; it cannot be taken afterwards, because adding evaluation instances
-once an arm has been scored on them is indistinguishable in form from selecting them.
+proportion over \emph{cases}, and each template contributes $M$ evaluation cases of which one
+or two are refusals. A result of zero silent failures on a template carries a one-sided $95\%$
+upper bound of roughly $45\%$ on the true rate at $M=5$, falling to about $10\%$ at $M=30$;
+and because Section~\ref{sec:eval:channels} forbids averaging a rate across carriers, it is
+the per-template bound that the main table must report, not the pooled one. That measurement
+is why $M$ was raised to $30$; the enlarged datasets do not exist yet, and until they do the
+$45\%$ figure is the one that applies.
+
+Raising $M$ does nothing for external validity, which is bounded by the template count above
+and by the fact that instances of one template are repeated draws from one rule document and
+one generator. The two limits are often conflated and must not be: more instances make ``on
+these three templates'' precise, not ``on template-filling tasks''. Raising $M$ also makes the
+threat in T12 worse rather than better, and the same decision deliberately weakened its
+countermeasure: hand-recomputing at least three fields of \emph{every} instance was the
+original lower bound, and at ninety instances and twenty-five measured minutes each it is
+about thirty-one hours, so the bound was relaxed to three instances per template. A shared
+misreading of a rule document is therefore now spread over more cases and sampled by a smaller
+audit. That trade is recorded here rather than in the protocol alone, because it is the kind
+of relaxation that would otherwise be invisible in the results.
 
 \paragraph{T9 --- the inclusion criterion is itself skewed.}
 The datasets admit only tasks whose target row count is fixed, because the write side
