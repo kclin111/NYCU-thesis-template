@@ -258,8 +258,7 @@ changes; \texttt{models.DwgProductionVersion.save} prevents mutation of the publ
 spec/hash identity; and \texttt{regression.RegressionRunner.run} persists results for
 all active cases of the lineage. The drift function reads the drawing-flavoured spelling of
 a target rather than the format-neutral list, which was recorded here as a prospective
-blind spot; Section~
-ef{sec:design:drift} reports the measurement that retired that
+blind spot; Section~\ref{sec:design:drift} reports the measurement that retired that
 concern and the narrower gap it found instead.
 
 \paragraph{P5---independently auditable rule coverage.}
@@ -1262,33 +1261,52 @@ value by content alone. Geometry and dump ordering are excluded for the same cla
 \paragraph{Measured on both main carriers, because it had only been tested on synthetic drawing
 dumps.}
 The fingerprint's unit tests feed it hand-built entity lists in the drawing shape, so whether it
-discriminates on a real document was an assumption. Measuring it on the two evaluation templates
-gives Table~\ref{tab:design:fingerprint}. The controls matter as much as the positives: a
-library round trip with no edit at all must not move the fingerprint, or the mechanism would
-report drift every time anything opened the file.
+discriminates on a real document was an assumption. Measuring it on the four evaluation
+templates --- two spreadsheets carrying $27$ and $196$ references, two Word documents carrying
+$92$ and $106$ --- gives Table~\ref{tab:design:fingerprint}, in which every carrier agrees with
+itself across both of its templates. The controls matter as much as the positives: a library
+round trip with no edit at all must not move the fingerprint, or the mechanism would report
+drift every time anything opened the file.
 
 \begin{table}[htbp]
 \centering
-\caption{Structural fingerprint on the two evaluation templates.}
+\caption{Structural fingerprint on the four evaluation templates, two per carrier.}
 \label{tab:design:fingerprint}
 \begin{tabular}{p{0.42\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
 \hline
-\textbf{Perturbation} & \textbf{XLSX (27 refs)} & \textbf{DOCX (92 refs)} \\
+\textbf{Perturbation} & \textbf{XLSX} & \textbf{DOCX} \\
 \hline
 Library round trip, no edit (control) & unchanged & unchanged \\
 Caption text edited in place & unchanged & unchanged \\
 Row / paragraph inserted inside the form & \textbf{changed} & \textbf{changed} \\
-Row appended past the last content-bearing cell & unchanged & --- \\
+Row / paragraph inserted past the last populated reference & unchanged & unchanged \\
+Block relocated, occupied columns differ & \textbf{changed} & \textbf{changed} \\
+Block relocated among equally shaped positions & unchanged & unchanged \\
+Headings of two columns exchanged in place & unchanged & unchanged \\
 \hline
 \end{tabular}
 \end{table}
 
-The last row is the honest one. On a spreadsheet the fingerprint is a hash over the cells that
-carry content, because a blank cell is not a target; a template edit that displaces none of them
-is therefore invisible to it. On the monthly-report template that means everything below row
-$25$. This is a genuine boundary rather than a bug: the alternative --- hashing the declared
-sheet dimension --- would move the fingerprint whenever a cell that once held a value was
-cleared, since the dimension stays inflated long after the value is gone.
+% 2026-08-26：本表原本四列，且「附加在最後一格之後」的 DOCX 欄是 `---`（沒量過）。
+% 變體語料庫（benchmark/drift）建成後，七種擾動在兩個載體、四份模板上各量了一次，
+% 每一列在兩個載體上都有值；後三列是這一輪新增的。
+The bottom four rows are the honest ones, and the corpus of
+Section~\ref{sec:eval:drift:corpus} is what let every cell of this table be filled on both
+carriers rather than left as a dash. On a spreadsheet the fingerprint is a hash over the cells
+that carry content, because a blank cell is not a target; a template edit that displaces none of
+them is therefore invisible to it. On the monthly-report template that means everything below
+row $25$, and the Word carrier behaves the same way below its last blank-bearing paragraph. This
+is a genuine boundary rather than a bug: the alternative --- hashing the declared sheet dimension
+--- would move the fingerprint whenever a cell that once held a value was cleared, since the
+dimension stays inflated long after the value is gone.
+
+The last two rows are the more serious pair, and both arrive at the same place from different
+directions: every reference survives and each one now names different content. The design
+excludes text on purpose, and the mechanism named as covering a renamed caption is the
+publish-time regression comparison against an approved document --- which does not run on the
+instance path. Section~\ref{sec:eval:drift} carries the consequence, and both boundaries are
+pinned by tests that assert the run is \emph{not} refused, so that closing either one turns a
+test red rather than leaving a sentence stale.
 
 \paragraph{A skeleton-level claim this measurement retired.}
 An earlier note in this chapter's outline asserted that drift detection ``goes blind the moment

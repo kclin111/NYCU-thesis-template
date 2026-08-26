@@ -964,10 +964,11 @@ is where a silent failure is cheapest to produce and hardest to notice.
 Each evaluation template gets a set of controlled variants, each differing from the original
 in exactly one respect: a block moved, a field's caption reworded, a block substituted, or a
 row inserted. A variant that changes two things at once cannot attribute the failure it
-provokes, and the earlier benchmark review made the same point about the pilot dataset. The
-observations are then symmetrical across arms: does the baseline produce a wrong file without
-saying anything; does the compiled arm refuse, does it name the location of the change, and
-what does re-deriving cost.
+provokes, and the earlier benchmark review made the same point about the pilot dataset.
+Section~\ref{sec:eval:drift:corpus} reports how that requirement is enforced on the artifacts
+themselves rather than trusted to whoever chose the edit. The observations are then symmetrical
+across arms: does the baseline produce a wrong file without saying anything; does the compiled
+arm refuse, does it name the location of the change, and what does re-deriving cost.
 
 \subsection{What Exists, and at Which Moment It Runs}
 
@@ -1046,24 +1047,98 @@ place immediately: the first version of the write named a timestamp column the a
 does not have, the exception was swallowed by the deliberately broad error handler around a
 best-effort write, and the key went unwritten exactly as before.
 
-What this does \emph{not} settle is the scope of the claim. Fixing detection does not create
-the drift experiment: the variant generator still does not exist, so RQ4 gains a working
-control and no numbers. The classes the fingerprint cannot see, carried below, are unchanged.
+What this does \emph{not} settle is the scope of the claim. Fixing detection does not run
+the drift experiment; it gives RQ4 a working control. The variants that control now has are
+the subject of the next subsection, and the classes the fingerprint cannot see are unchanged.
 
-\subsection{What Does Not Exist}
+\subsection{The Variant Corpus, and What It Cannot Reach}
+\label{sec:eval:drift:corpus}
 
-The variant generator does not exist. Producing controlled single-variable drift variants of a
-real government form and a real trade document is dataset work of the same kind as building the
-datasets themselves, and none of it has been done; the drift experiment is therefore entirely
-unrun, not merely unreported. Two further limits of the detector are already measured and are
-carried here from Section~\ref{sec:design:drift} because they bound what the experiment could
-show even once the variants exist. On a spreadsheet the fingerprint covers only cells that
-carry content, so a variant that changes layout past the last content-bearing cell --- below
-row $25$ on the monthly-report template --- is invisible to it, and such a variant would have to
-be classified as out of scope rather than counted as a miss. And a specification's
+% 2026-08-26：本節原文是「The variant generator does not exist」。產生端已建成
+% （benchmark/drift，28 個變體、4 份模板、10 道 validator、11 條綠→紅對照），
+% 實驗仍未跑。Status 段依 §3 的第 1＋3 條出路分開判：機制 implementation-backed、
+% 實驗 normative。
+
+Controlled variants of the two evaluation templates now exist. Each of the four templates ---
+the two spreadsheets of the highway-bureau chain and the two Word documents of the trade pair
+--- receives seven variants, twenty-eight in all, and each variant differs from its template in
+exactly one respect: a row or paragraph inserted, a block relocated, a caption reworded, a
+block of headings substituted, or nothing at all.
+
+The last of those is the control, and it is the reason the others are interpretable. A variant
+produced by opening the file in a document library and saving it again differs from its
+template in hundreds of bytes and, on the spreadsheet carrier, in eleven package parts: the
+library does not preserve the drawing or the printer settings. Its fingerprint does not move.
+Without that measurement, ``the fingerprint moved'' on the other variants would establish only
+that a file had been rewritten.
+
+\paragraph{One variable is a property of the artifacts, not a promise from their author.}
+The generator refuses to write a variant it cannot attribute. Each variant declares whether it
+moves \emph{structure} or \emph{content}, and three views of the file --- the reference set, the
+text at each position, and a text-free layout signature --- are compared before and after. A
+structural variant must preserve the multiset of content, because a permutation cannot invent a
+value; a content variant must leave both the reference set and the layout untouched; and every
+variant must move at least one of the three views, or it is a file with different bytes and the
+same meaning. Two situations are refused outright rather than annotated: a relocation whose row
+permutation would tear a merged range across the boundary of the moved block, and a worksheet
+containing any construct whose row references the editor has not been checked against. A
+refusal that still writes the file is not a refusal.
+
+The generator computes no expected output and imports nothing from the system under test. It
+produces the question; the answer is measured elsewhere.
+
+\paragraph{Three of the seven classes are out of scope for the detector, and the corpus says
+so in writing.}
+Each variant carries a declaration, written from the class's semantics before anything was
+measured, of what the detector should do: fire, stay correctly silent, or be structurally
+unable to see the change. All twenty-eight declarations matched the measured behaviour of the
+structural fingerprint on the first run. Eight variants must be refused, eight are variants on
+which silence is the right answer and the compiled output is still correct, and twelve are
+drift the fingerprint cannot reach. Those twelve are recorded with a reason and must be
+reported as out of scope rather than counted as detector misses; a validator refuses a corpus
+in which one of them is unlabelled, because an unlabelled blind spot is one a results table
+would silently score as a failure.
+
+The three unreachable classes are worth naming, because two of them were carried in this thesis
+as prose and the third was not previously written down anywhere.
+
+\begin{description}
+  \item[Layout past the last populated reference.] A spreadsheet fingerprint hashes the cells
+    that carry content, so a row inserted below the last of them --- below row $25$ on the
+    monthly-report template --- cannot reach it. The corpus makes this sharper than the earlier
+    statement did by pairing it: the \emph{same} insertion one anchor higher does move the
+    fingerprint, on both carriers, so the difference in verdict is a property of where the row
+    went rather than of the edit. The Word analogue is measured here for the first time; the
+    earlier record noted that only three perturbations had ever been tried on that carrier.
+  \item[A permutation among equally shaped positions.] Two rows occupying the same columns, or
+    two paragraphs carrying the same number of fillable blanks, exchange places. Every reference
+    survives, every one of them now names different content, and the fingerprint's key set is
+    identical. This is the silent failure of Section~\ref{sec:design:failloud} in its purest
+    form --- a compiled specification writes real values into the wrong slots and the file
+    parses perfectly --- and at execution time nothing detects it. The design excludes text from
+    the fingerprint deliberately, because every production run rewrites text, and names the
+    publish-time regression comparison as the mechanism that covers a renamed caption; that
+    mechanism does not run on the instance path.
+  \item[A block of headings substituted in place.] Two columns of a form exchange meaning while
+    keeping their slots. Structurally identical to the previous class and reached by a different
+    edit, which is why the corpus keeps them apart: they differ in what an operator would see,
+    not in what the detector can.
+\end{description}
+
+A fourth limit is unchanged and is about review rather than execution: a specification's
 blank-target declarations are not compared by the structural diff at all, so two specification
 versions differing only in what they claim to leave blank present a reviewer with an empty
 change list.
+
+\paragraph{What the corpus is not.}
+The classes come from the drift protocol and from what these particular forms plausibly do
+between editions; they are not drawn from an observed corpus of real revision histories, and no
+claim is made that their frequencies resemble those of real revisions. The edits are byte-level
+patches to individual package parts, which keeps them attributable at the cost of being tidier
+than a revision made by hand in an office application --- row-anchored drawings are moved with
+their rows for exactly this reason, but the general point stands and bounds the external
+validity of every number the drift axis will report. And the two carriers are served by two
+implementations that share no code, so a class covering both is one name over two mechanisms.
 
 \subsection{Metrics for This Axis}
 
@@ -1088,17 +1163,25 @@ identically for an arm that declares nothing.
     the trade Section~\ref{sec:eval:randomness} discusses.
 \end{description}
 
-\paragraph{Status: detection implementation-backed on both carriers; the experiment
-normative.}
+\paragraph{Status: detection and the variant corpus implementation-backed on both carriers;
+the experiment normative.}
 The fingerprint's sensitivity is measured on both real evaluation templates; the publish
 gate's two-way refusal is implemented and tested; and as of 2026-08-24 so is the
 execution-time comparison, which now runs ahead of the carrier branch, is shared by both
 paths, and is verified on the real spreadsheet template against a row-inserted variant with a
-library round trip as its control. What remains normative is the experiment, not the
-mechanism: the variant generator does not exist and no drift experiment has been run, so every
-\emph{number} this section describes is still a plan, and the classes the fingerprint cannot
-see bound what those numbers could show. Where the design is claimed without evidence the bias
-runs towards the proposed method, and Section~\ref{sec:eval:threats} repeats it there.
+library round trip as its control. As of 2026-08-26 the production side exists as well: the
+twenty-eight variants of Section~\ref{sec:eval:drift:corpus} are generated, validated by ten
+checks each of which has been shown to turn from green to red under an injected fault, and
+consumed by the production controller's own tests --- including two tests that assert a variant
+is \emph{not} detected, so that the two blind spots turn red the day somebody closes them.
+
+What remains normative is the experiment, and only the experiment. \textbf{No drift experiment
+has been run and this section reports no result.} Building the generator produces variants, not
+measurements: every \emph{number} the three metrics above describe is still a plan, the classes
+the fingerprint cannot see bound what those numbers could show, and the corpus's own external
+validity --- generated revisions standing in for observed ones --- bounds them again. Where the
+design is claimed without evidence the bias runs towards the proposed method, and
+Section~\ref{sec:eval:threats} repeats it there.
 
 \section{Ablations}
 \label{sec:eval:ablation}
@@ -1593,6 +1676,22 @@ is actually about. The bias direction of what remains still favours the proposed
 would otherwise credit the deterministic arm with cell-level end-to-end evidence on both carriers
 when it exists on one.
 
+\paragraph{T15 --- the drift variants are generated, not observed.}
+% 2026-08-26 新增：產生端建成之後，效度威脅從「不存在」變成「它代表誰」。
+The twenty-eight variants of Section~\ref{sec:eval:drift:corpus} are constructed from the
+drift protocol's four named classes and from what these particular forms plausibly do between
+editions. No corpus of real revision histories for these documents was consulted, so nothing
+is claimed about how often real revisions fall into each class, and the drift results will be
+descriptive of the constructed variants rather than of a population of revisions. The
+construction is also tidier than a revision made by hand: each edit is a byte-level patch to
+individual package parts, which is what makes it attributable, and the compensations for that
+tidiness are partial --- row-anchored drawings are moved with their rows, but no claim is made
+that the result is indistinguishable from an edit made in an office application. The direction
+of the bias is not determined: a cleaner variant may be easier for a baseline to cope with, and
+a variant class that real revisions rarely produce may flatter either side. This is the third
+admissible response --- the design is stated, the experiment will be reported as descriptive,
+and the gap is disclosed rather than argued away.
+
 \paragraph{T13 --- two responses to the pilot that were rejected, and why.}
 After the pilot in Section~\ref{sec:eval:rq} showed the per-instance baseline to be
 semantically accurate, two adjustments were available and both were declined. Increasing task
@@ -1602,8 +1701,8 @@ Recording them here is part of the claim: the emphasis of this thesis moved to c
 cost structure \emph{because} the baseline was accurate, not because the tasks were made
 harder.
 
-\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14; normative
-for T3, T4, T8, T11, T13.}
+\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15;
+normative for T3, T4, T8, T11, T13.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
