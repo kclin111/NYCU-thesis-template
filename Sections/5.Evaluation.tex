@@ -115,8 +115,8 @@ The split has two levels, and only the first of them currently holds in full.
 Every evaluation template carries $K=3$ calibration instances, shared by all three arms and
 the only instances any arm may see during construction; two development instances used for
 debugging; and $M$ evaluation instances that no arm may see at any stage after sealing. S4
-and X1 each contain two refusal cases; S5 contains one. Thus every dataset tests the case in
-which producing a plausible file is itself the wrong behaviour.
+contains two refusal cases, S5 one, and X1 seven of thirty. Thus every dataset tests the case
+in which producing a plausible file is itself the wrong behaviour.
 
 % 2026-08-26：M 由 5 提高到 30（協定 §2.2.1）。裁定已定、資料集尚未擴充，
 % 所以這裡把「設計」與「現況」分開寫，不得只寫其中一個。
@@ -124,18 +124,37 @@ $M$ was set to $30$ on 26 August 2026. It had never actually been decided --- $5
 placeholder carried from the protocol's first draft --- and the measurement that settled it
 is in Section~\ref{sec:eval:threats:mixed}: the silent-failure rate is a proportion over
 cases, so at $M=5$ a template reporting no silent failures still admits a true rate of $45\%$,
-against about $10\%$ at $M=30$. \textbf{The datasets have not been enlarged yet}: each still
-holds the original five, so every count elsewhere in this chapter that depends on the
-evaluation split describes the current five and not the intended thirty. Enlarging them is
-dataset work that must be finished before the formal run and cannot be done after it, because
-adding evaluation instances once an arm has been scored on them is indistinguishable in form
-from selecting them.
+against about $10\%$ at $M=30$.
+
+\textbf{The design is thirty for every template; the datasets have reached it for one.} X1
+holds thirty evaluation instances as of 26 August 2026. S4 and S5 still hold five each, so
+every count elsewhere in this chapter that depends on their evaluation split describes five.
+Enlarging the remaining two is dataset work that must be finished before the formal run and
+cannot be done after it, because adding evaluation instances once an arm has been scored on
+them is indistinguishable in form from selecting them. The two figures are reported
+separately throughout rather than averaged into a single claim about ``the datasets''.
+
+Reaching thirty changed the \emph{genre} of an evaluation set, and that is a methodological
+change rather than a larger version of the same thing. Thirty hand-designed scenarios would
+be twenty-five stories invented to reach a number. So X1 keeps its five designed instances,
+each pinning one capability, and draws the other twenty-five from a distribution and a seed
+written down before the draw; what a reviewer checks is no longer whether each case was a
+good idea but whether the set on disk is the one that seed produces, which is mechanical.
+Section~\ref{sec:eval:dataset} states the conditions this puts on a dataset and what it
+costs.
 
 As of 26 August 2026, S4 and X1 are sealed --- and sealed by mechanism rather than by
 convention, which they were not before that date: their generators rewrote every case
 unconditionally, evaluation included, while three documents described them as sealed. A
-shared guard now pins each evaluation file by digest and refuses to regenerate it. S5 remains
-at the pre-seal boundary described below.
+shared guard now pins each evaluation file by digest and refuses to regenerate it. X1's seal
+is closed, because its thirty exist; S4's remains open for exactly the enlargement it has yet
+to receive. S5 remains at the pre-seal boundary described below.
+
+One measurement from closing the first seal is worth recording here, because it is about the
+guard and not about the data: while every seal was open, the branch that refuses a new
+evaluation instance was structurally unreachable, and the first time a seal was actually
+closed it rejected a \emph{calibration} instance --- a check that had never once run in the
+state it was written for. A check that rejects a correct action is worse than no check.
 
 \paragraph{Template level.}
 Three evaluation-template artifacts now exist, but only two are sealed and formal-ready:
@@ -150,7 +169,9 @@ Three evaluation-template artifacts now exist, but only two are sealed and forma
     chain, in which $N$ real 13020A audit sheets are aggregated into one 13020D monthly
     report. Its principal difficulties are a cross-file collection of source artifacts and a
     layout in which one logical record occupies two physical rows. Twenty-seven applicable
-    rules.
+    rules. It is the only dataset at the decided $M=30$: five designed instances and
+    twenty-five sampled, sealed closed, with $N$ ranging from one to sixteen source sheets
+    across the thirty.
   \item \textbf{S5} (XLSX, pre-seal): a faithful spreadsheet transcription of National
     Taiwan University Public Health's circulating Health Big Data Credit Programme
     certificate form. It has eight fixed course slots and combines course lookup, repeat
@@ -415,10 +436,13 @@ Two of the annotation manual's requirements are procedural rather than structura
 has been met. The manual requires that a second person independently redo the judgement step
 for each template, and that each instance receive a spot check of at least three fields
 recomputed by hand from the sources, including one aggregate and one negative obligation.
-Counted across all twenty-eight stored instances of the three datasets: every ground truth
+Counted across all sixty-three stored instances of the four datasets: every ground truth
 records its reviewer as pending; one of ten DOCX instances carries a spot check, of six fields
-and twenty-five minutes; one of ten XLSX instances carries one, likewise six fields and
-twenty-five minutes; none of the eight pilot instances carries one.
+and twenty-five minutes; one of thirty-five XLSX instances carries one, likewise six fields
+and twenty-five minutes; none of the ten pre-seal instances of the third template carries one;
+none of the eight pilot instances carries one. The lower bound was relaxed on 26 August 2026
+from every instance to three per template, and against the relaxed bound the count is one of
+three, one of three and none of three.
 
 This is the residual no other mechanism reaches, and it is worth being precise about why.
 Schema validation catches shape errors. Cross-checks catch a total that disagrees with its own
@@ -465,6 +489,47 @@ and one material mutation turns each of the eight scoring channels red from a gr
 The remaining item is procedural and deliberately cannot be discharged by those results:
 the signed human audit over all ten cases and the seal made from it do not yet exist.
 
+\paragraph{A sampled evaluation set, and the four things that have to be checkable about it.}
+The last item of that checklist --- the spot check on every instance --- was relaxed on the
+same day $M$ was raised, and the paragraph above already reports it as unmet. Raising $M$ also
+changes an earlier item. ``Three calibration, two development and $M$ sealed evaluation
+instances'' is a statement about counting when the instances are designed one at a time; once
+twenty-five of thirty are drawn, the construction has to be auditable as a \emph{sampling
+procedure}, and four things replace ``somebody chose what this case tests'':
+
+\begin{enumerate}
+  \item the declared size and membership of the evaluation set match what is on disk;
+  \item the distributional conditions the dataset claims hold over the draw, with every
+    threshold stored in the declaration rather than in the checking code, because a
+    threshold that lives in the checker is one the checker can quietly relax;
+  \item the instances on disk are the ones the declared seed produces --- verified against
+    the ground-truth files and not against the sampler's own output, since a sampler agreeing
+    with itself establishes nothing;
+  \item the instances designated for consistency reruns are selected by a rule over instance
+    \emph{shape} and can be recomputed from the sealed dataset.
+\end{enumerate}
+
+Each is implemented as a validator check with a negative control that turns it red. Three
+consequences of doing it this way are worth stating because they are not improvements.
+
+The declaration cannot live in the annotation manifest. Every ground truth pins that
+manifest's digest, and most of them are sealed, so adding one key to it would require
+rewriting sealed instances --- which is the one thing a seal exists to prevent. It therefore
+lives in a sibling file that the seal pins separately. For the same reason the ground-truth
+schema does not record that an instance was drawn or from which seed: a reviewer holding a
+single ground truth cannot see its provenance, and only the dataset as a whole carries it.
+
+The fourth condition needed a detail that looks like fussiness and is not. Ties in the
+selection rule are broken by a seeded permutation rather than by instance identifier,
+because the five designed instances hold the five lowest identifiers and an ascending
+tie-break would resolve every tie in favour of the hand-written sixth of the set.
+
+And sampling makes the diagnostic value of a single failure lower, not higher. When every
+case was chosen to test something, a failure named the thing; among twenty-five draws it
+does not, and recovering ``which rule did this one tread on'' costs more work. That is the
+price of the confidence interval, and it is paid in the currency of debugging rather than of
+statistics.
+
 \paragraph{Status: implementation-backed for the mechanisms; S5 is constructed but not sealed.}
 The generators, the two schemas, the per-dataset validators with their negative controls, the
 hypothesis computation and the refusal shape are implemented and are in the repository; every
@@ -473,9 +538,13 @@ estimated. S5 closes the excluded-member and output-aggregate gaps: it contains 
 course-shaped pollution rows, and its written total is checked against the sum of written
 course-credit slots. X1's zero cross-check count remains a different, structural case with a
 versioned policy reason. The residual shortfall is the human check itself. Before S5, two of
-twenty-eight stored cases carried recorded spot checks; adding ten pre-seal S5 cases makes the
-current record two of thirty-eight. Automated workbook-side recomputation is 10/10 but is not
-counted as human review. The bias direction remains undetermined.
+twenty-eight stored cases carried recorded spot checks; adding ten pre-seal S5 cases made it
+two of thirty-eight, and enlarging X1 to thirty evaluation instances makes it two of
+sixty-three. The numerator has not moved in any of those recounts, which is the point: the
+denominator is the only thing that grows when a dataset does. Automated workbook-side
+recomputation is 35/35 on the enlarged dataset but is not counted as human review, and it
+cannot be --- it reads the workbooks that the same reading of the rules produced. The bias
+direction remains undetermined.
 
 \section{Baselines and Fairness}
 \label{sec:eval:baselines}
@@ -1658,8 +1727,14 @@ or two are refusals. A result of zero silent failures on a template carries a on
 upper bound of roughly $45\%$ on the true rate at $M=5$, falling to about $10\%$ at $M=30$;
 and because Section~\ref{sec:eval:channels} forbids averaging a rate across carriers, it is
 the per-template bound that the main table must report, not the pooled one. That measurement
-is why $M$ was raised to $30$; the enlarged datasets do not exist yet, and until they do the
-$45\%$ figure is the one that applies.
+is why $M$ was raised to $30$. \textbf{One dataset has reached it}: X1 holds thirty
+evaluation instances, so the $10\%$ bound applies to that template and the $45\%$ bound
+still applies to S4 and S5. The three field-level figures above were measured over five
+instances per template and are therefore unchanged for S4 and S5 and six times larger for
+X1; they are also the smaller of two counts of the same quantity that disagree by two, six
+and nine fields, and neither counting method was written down, so this thesis reports the
+figure it has always reported and records the discrepancy as an open item rather than
+substituting a number whose predecessor cannot be reconstructed.
 
 Raising $M$ does nothing for external validity, which is bounded by the template count above
 and by the fact that instances of one template are repeated draws from one rule document and
@@ -1694,9 +1769,19 @@ no claim in this thesis is established as vendor-independent.
 \paragraph{T12 --- the correctness of the reference outputs.}
 Discussed in Section~\ref{sec:eval:selfvalidation}. Mutation testing bounds the evaluator, not
 the generator; the residual is covered only by a spot audit, and the audit has largely not
-been performed. Counted across the twenty-eight stored instances of the three datasets, every
+been performed. Counted across the sixty-three stored instances of the four datasets, every
 ground truth records its reviewer as pending, and exactly two instances --- one per main
-dataset --- carry the hand recomputation the annotation procedure requires of all of them. The
+dataset --- carry the hand recomputation the annotation procedure requires. The relaxed lower
+bound decided alongside $M$ asks for three instances per template rather than all of them,
+and against that bound the count is one of three for S4, one of three for X1 and none of
+three for S5; worksheets naming the instances, the fields and the hand calculation exist for
+two datasets and are unsigned, which is the only part of this that could be prepared
+mechanically.
+
+Enlarging X1 to thirty put a number on what the relaxation costs. Four audited instances
+would have covered four fifths of a five-instance set; they cover an eighth of a thirty-instance
+one. Raising $M$ and weakening its countermeasure were two halves of one decision, and this
+is the exchange rate between them. The
 class of error this leaves open is a rule misread identically by the rule document and the
 generator, in which case every number is wrong together and every cross-check between the
 numbers still holds; the single audit performed on the DOCX dataset found one instance of
