@@ -28,6 +28,18 @@
 %   4. 舊大綱 Intro 的 claim 1 寫「正確性不輸且**變異度為零**」——執行期為零、
 %      推導期不為零且已量到（spec 32 vs 33，prompt 與 payload 完全相同）。
 %      §1.5 已改寫成兩半，與 §5.1 RQ2 的不對稱敘述一致。
+%
+% 【2026-08-26 第五處，方向與前四處一致（本章高估本方法）】W3 那張家族表
+%   （§2.12 Table tab:rel:families）排出來之後，§1.2.3 的「the empty corner」
+%   當場站不住：PBE 佔了那個角落十幾年，FlashFill++ 還是出貨產品。已改成
+%   「共用那個角落，差別在進去要推論什麼」，並前向引用那張表當權威。
+%   **兩處各記一份就會漂移**，所以這裡只留三句話的簡版。
+%
+% 【2026-08-26 新增 §1.2（W5）】原本第 1 章的動機只有「量大所以值得攤提」一條，
+%   而它依賴 N 夠大而 break-even 尚未量測。第二條動機（資料出不去 → 雲端用合成
+%   實例推導、地端零模型執行）**不依賴 N**，所以獨立一節寫，不塞進 §1.1。
+%   它走 CLAUDE.md §3 的第 3 條出路，對應 §5.10 的 T16；四條邊界與主張同段。
+%   它與 §5.8.1 的 C-i 不打架：C-i 是經濟條件，這一節是可行性條件。
 % =====================================================================
 
 \section{Motivation}
@@ -107,6 +119,101 @@ recurrence is precisely the condition under which a one-off derivation cost amor
 therefore stated as an admission condition rather than as a finding in
 Section~\ref{sec:design:scope}, and Section~\ref{sec:eval:metrics} reports a break-even
 instance count rather than assuming one.
+
+\section{A Second Motivation, Which Does Not Depend on Volume}
+\label{sec:intro:confidentiality}
+
+% 2026-08-26 動筆（W5）。動筆前的 grep：
+%   grep -riE "on-prem|premise|privacy|confidential|air-gap|local model" Sections/*.tex
+%   → 六章命中 0 次（唯二的 premise 是「前提」的英文）
+% 也就是說「為什麼企業會需要這個東西」在此之前完全不在論文裡。
+%
+% 這一節走 CLAUDE.md §3 的**第 3 條出路**：規範性主張，明講尚未實證，
+% 並在 §5.10 開一條新的 threat（T16）。四條邊界必須與主張寫在同一段——
+% 拆開寫就會被讀成隱私保證，而 §2.4 已經明白拒絕做規範性／法規性宣稱。
+%
+% 它與 §5.8.1 的 C-i 不打架，因為兩者問的不是同一個問題：C-i 是經濟條件
+% （N 太小就不划算），這一節是可行性條件（資料出不去，per-instance 那條路
+% 根本不在選項裡）。C-i 已加一句話明說它不涵蓋這一條。
+
+The motivation of Section~\ref{sec:intro:motivation} is an argument about volume: the same
+form is filled four hundred times, so a one-off derivation amortizes. That argument has an
+honest weakness, disclosed in its own Status paragraph and again in
+Section~\ref{sec:eval:randomness} --- below some break-even instance count it fails, and this
+thesis has not measured where that count lies. A second motivation exists which does not
+depend on $N$ at all, and it is stated separately here for exactly that reason.
+
+\paragraph{The constraint is that the data cannot leave.}
+An organization holding personal, commercial or regulated records is frequently in a position
+where the capable models are reachable only as a network service and the records may not be
+sent to one. The usual response is to run a smaller model on the organization's own hardware
+and accept a weaker one. This thesis does not measure any local model and makes no claim about
+how much weaker such a model is; the constraint is treated as a deployment condition reported
+by practitioners rather than as a performance finding, and nothing below rests on it, for a
+reason that is worth stating early: the arrangement proposed here needs \emph{no} local model,
+so how good a local model would have been is not a premise of the argument but only of the
+alternative it displaces.
+
+\paragraph{The arrangement, and why this thesis has already performed the hard half of it.}
+Compile-once, execute-many splits the work at exactly the boundary this constraint needs.
+Derivation consumes a template, a rules document and a small number of calibration instances,
+and it emits a specification. Execution consumes the specification and the real source data
+and emits documents, with no model call at all
+(Section~\ref{sec:intro:position:move}). Placing the derivation in the cloud and the execution
+on the organization's own machines therefore sends the template, the rules and the calibration
+instances outward, brings a specification back, and never sends a real record anywhere. What
+makes this more than a proposal is that the calibration instances of this thesis are
+\emph{already synthetic}: all three datasets are populated by hand-written generators over
+templates that are genuine circulating forms, so every derivation reported here has been a
+derivation from synthetic instances of a real template. The half that would need demonstrating
+is the half that has been demonstrated throughout; what has not been demonstrated is the
+deployment.
+
+The claim is also stronger than the more obvious version of it, which is to ship a compiled
+tool for a small local model to call. Nothing local is needed. What crosses back is a
+specification that a person can read to the end --- its fields, its locators, its
+transformations, its extents and the locations it is forbidden to write --- rather than a model
+whose behaviour nobody can read to the end. That is a direct consequence of C4 and of the same
+negative-control test that pins it, and of the measurement in which the shipping production
+path produced byte-identical output on five instances across 380 compared cells
+(Section~\ref{sec:eval:threats}).
+
+\paragraph{Four boundaries, stated here rather than later, because without them this reads as a
+privacy guarantee.}
+First, three things cross outward and only one of them is obviously innocuous: the template,
+usually a blank form; the \emph{rules document}, which may itself be confidential, since an
+operating procedure can encode pricing policy, thresholds or internal structure; and the
+synthetic calibration instances. Only the specification crosses back, and no real instance data
+crosses in either direction. Second, a template revision invalidates the specification and
+sends the organization back to the cloud for another derivation, so the frequency of that round
+trip is the revision rate --- which is the axis of RQ4 and of Section~\ref{sec:eval:drift},
+not a detail. Third, the synthetic calibration instances must be faithful enough; where they
+are not, the derived specification will be wrong on real data \emph{deterministically and
+silently}, which is this thesis's headline failure mode arriving through a new door, and the
+existing disclosure of it is the shared-misreading class of Section~\ref{sec:eval:threats} and
+the single-example primitives recorded there alongside it. Fourth, and most
+importantly, \textbf{this is not a security argument.} No threat model is constructed anywhere
+in this thesis, and no claim is made that a specification is free of information that could be
+traced back to source data --- an anchor string in a locator may well be a real field name
+lifted from a real document. Readability is not confidentiality. What is claimed is
+architectural: the category of data that must cross the boundary is different, and it is
+smaller.
+
+\paragraph{Status: normative throughout, and no enterprise deployment has been performed.}
+This section takes the third of the three admissible responses to a gap: the claim is made,
+labelled as a design argument rather than a finding, and disclosed as a threat in
+Section~\ref{sec:eval:threats} rather than left in the introduction alone. No on-premises
+installation exists, no organization has used this system under such a constraint, and no
+experiment in this thesis varies the deployment topology. Two of its components are
+nonetheless implementation-backed rather than asserted, and they are the two that would be
+hardest to retrofit: that execution performs no model inference is pinned by a negative-control
+test (Section~\ref{sec:intro:position:cost}), and that calibration instances are synthetic
+while templates are real is a property of the datasets as built
+(Section~\ref{sec:eval:dataset}). The bias direction is favourable to this thesis, because a
+motivation that requires no experiment is a motivation nobody has yet had the opportunity to
+falsify; Section~\ref{sec:eval:threats} records it under that heading. Finally, this section
+makes no claim that any regulation \emph{requires} deterministic output, which
+Section~\ref{sec:rel:governance} looked for in the literature and did not find.
 
 \section{Two Existing Approaches, Both Wrong}
 \label{sec:intro:existing}
@@ -203,15 +310,32 @@ statement of where this work sits:
 \end{itemize}
 
 The two existing approaches are not opposite errors to be split between. They occupy
-opposite corners of one table, and the empty corner is the one in which the authoring is
-automatic and the execution is not. Section~\ref{sec:rel:rpa} develops this against the
-literature.
+opposite corners of one table, and the corner this work is placed in is the one in which the
+authoring is automatic and the execution is not. Section~\ref{sec:rel:rpa} develops the
+three-way division against the literature.
+
+% 2026-08-26（W3）：這一句原本寫「the empty corner」，而 Table tab:rel:families
+% 排出來就看見它不空——PBE 佔了它十幾年，FlashFill++ 還是出貨產品。
+% 這是本章第五處「骨架高估本方法」，方向與前四處一致。權威是第 2 章那張表，
+% 這裡只留三句話的簡版並前向引用，不另記一份。
+That corner is not empty, and saying it was would repeat the error this chapter has already
+been corrected for four times. Programming by example has occupied it since 2011
+\cite{gulwani2011flashfill} and occupies it today inside a shipping spreadsheet product
+\cite{cambronero2023flashfillpp}: a program is synthesized automatically and then executed
+deterministically, which is this work's arrangement exactly. The difference is not the corner
+but what has to be inferred to enter it, and Section~\ref{sec:rel:pbe} states it precisely. The
+three bullets above are the abbreviated form of a comparison that
+Table~\ref{tab:rel:families} makes across nine families and four decidable coordinates; where
+the two disagree, the table is the authority.
 
 \paragraph{Status: the taxonomy is normative; the criticism of approach one is
 pilot-supported; the criticism of approach two is implementation-backed.}
 The three-way division is a positioning argument, not a measurement: no experiment in this
 thesis varies automation paradigm, and no citation is attached to the characterization of
-robotic process automation until Chapter~\ref{ch:relatedwork} supplies one. The claim about
+robotic process automation until Chapter~\ref{ch:relatedwork} supplies one. It is also a
+division over three traditions rather than a partition of the design space, which the
+paragraph above concedes explicitly after
+Table~\ref{tab:rel:families} showed that a fourth tradition shares this work's corner. The claim about
 approach one rests on a three-run pilot on a single instance, which is enough to establish
 that run-to-run divergence exists and nowhere near enough to quantify it; the formal
 instrument is the rerun budget of Section~\ref{sec:eval:reruns}, which has not been executed.

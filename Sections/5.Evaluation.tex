@@ -847,6 +847,7 @@ projection in this chapter is therefore a projection over agent behaviour, not o
 size, and the two do not move together.
 
 \subsection{Rule Coverage Is an Arm C Diagnostic}
+\label{sec:eval:coverage}
 
 Coverage is reported as \texttt{covered}, \texttt{unresolved}, \texttt{rejected} and
 \texttt{unmentioned} against an external denominator, and two properties of it must be
@@ -941,6 +942,52 @@ exists and is large, which is the qualitative half of RQ2. It is \emph{not} the 
 experiment: those runs were not namespace-isolated, the implementation changed between several
 of them, and their purpose was debugging. They are reported as observations with that
 provenance attached, and the distribution promised above has not been measured.
+
+% 2026-08-26（W4）：空表先定欄位，數字隨第 20 項落。
+% 這一節是 D=3 量法的**權威**；§2.13 只給詞彙與分層並引用這裡，
+% §5.8.1 只講「搬過去買到什麼」。三處不得互相重述。
+% 表放在這裡而不是 §5.8，因為 §5.8 Results 在正式實驗跑完之前不得有任何數字，
+% 而一張只定義了欄位的設計表不是結果。
+\paragraph{The shape in which that distribution will be reported.}
+Table~\ref{tab:eval:derivationdispersion} fixes the columns now, before any of them can be
+chosen after seeing the numbers. Each row is one evaluation template, and the entries are read
+over its $D=3$ isolated replicates: the field-level accuracy of each replicate's specification
+executed over all $M$ instances, reported as a range rather than a mean because three points do
+not support one; the rule coverage of each replicate against the frozen manifest, whose
+denominator is fixed across replicates by Section~\ref{sec:eval:coverage}; the number of
+replicates whose specification passes every publish gate, which is the quantity
+Section~\ref{sec:eval:randomness} calls $k$ seen from the other side; the size of the
+specification diff between replicates, as the count of fields on which any two disagree; and
+the number of \emph{cases} on which the three replicates do not produce the same verdict, which
+is the closest thing this design has to the dispersion measures of
+Section~\ref{sec:rel:uncertainty}. The last column is the one that matters most and is the
+easiest to omit: three specifications can differ substantially and still agree on every case,
+and a reader cannot infer one from the other.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Derivation-time dispersion, $D=3$ isolated replicates per evaluation template. The
+columns are fixed in advance; the experiment has not been run and no cell carries a number.}
+\label{tab:eval:derivationdispersion}
+\begin{tabular}{p{0.135\linewidth}p{0.145\linewidth}p{0.125\linewidth}p{0.125\linewidth}p{0.15\linewidth}p{0.155\linewidth}}
+\hline
+\textbf{Template} & \textbf{Semantic accuracy, min--max} & \textbf{Rule coverage, min--max} &
+\textbf{Publishable replicates} & \textbf{Spec diff, disagreeing fields} &
+\textbf{Cases with a split verdict} \\
+\hline
+S4 (DOCX) & & & \,/\,3 & & \,/\,$M$ \\
+X1 (XLSX) & & & \,/\,3 & & \,/\,$M$ \\
+S5 (XLSX) & & & \,/\,3 & & \,/\,$M$ \\
+\hline
+\end{tabular}
+\end{table}
+
+No row of that table may be averaged with another, for the reason
+Section~\ref{sec:eval:channels} gives, and no column may be summarized as a single dispersion
+score: the point of reporting five quantities is that they can move independently, and a
+composite would hide exactly the case where the specifications differ a great deal and the
+outputs do not.
 
 \paragraph{Status: normative for the budget and the $D=3$ design; implementation-backed for
 the isolation mechanism, the identity instrument, and the existence of derivation variance.}
@@ -1492,6 +1539,16 @@ or unmeasured.
     ones whose expected output Arm A is entitled to see, and it used it
     (Section~\ref{sec:eval:cost}). The break-even point is therefore still not large or small,
     but its denominator is now half-populated rather than empty.
+    % 2026-08-26（W5）：這一條是經濟條件，不是可行性條件。加這半句是因為
+    % §1.2 的第二個動機在 N 小的時候仍然成立，而不加就會被讀成互相打架。
+    One scope note belongs here rather than in the introduction, because this is where the
+    condition is stated as a quantity. C-i is an \emph{economic} condition and not a
+    feasibility one. Section~\ref{sec:intro:confidentiality} gives a second motivation that
+    does not depend on $N$ --- that real instance data may not leave the organization, so the
+    per-instance alternative is not among the options at any $N$ --- and below break-even those
+    two readings point opposite ways: the exchange can be a bad bargain on cost and still be
+    the only admissible arrangement. Nothing in this thesis measures how often that situation
+    arises, and the threat that records the claim is T16.
   \item[C-ii --- derivation succeeds too rarely.] If the expected number of derivation attempts
     before a publishable specification is $k$, the amortized derivation cost is multiplied by
     $k$, and a large enough $k$ removes the advantage at any $N$. This quantity is also
@@ -1663,6 +1720,30 @@ applicability manifest that supplies the coverage denominator was written for th
 weakens the objection that the templates are self-designed; it does not weaken the objection
 that the rules were written by someone who knew what the method can express. Any use of an
 externally sourced template must state this in the same breath, or it reads as padding.
+
+% 2026-08-26 新增（W5）。編號接在 T15 之後，但位置在「偏向本方法」這一小節，
+% 因為一個不需要實驗的動機是沒有人有機會證偽的動機。
+% 與 T8／T12 的關係寫在條目裡：它不新增效度威脅，它**繼承**那兩條，
+% 再加上一條自己的（沒有部署、沒有威脅模型）。
+\paragraph{T16 --- the deployment argument is made without a deployment.}
+Section~\ref{sec:intro:confidentiality} states a second motivation --- derive in the cloud from
+synthetic calibration instances of a real template, execute on the organization's own machines
+with no model at all --- and it is entirely normative. No on-premises installation exists, no
+organization has used this system under a confidentiality constraint, and no experiment here
+varies the deployment topology. Three things about its bias direction have to be separated. It
+is favourable to this thesis in the plain sense that a motivation requiring no experiment
+cannot be falsified by one. It \emph{inherits} T12 rather than adding to it: the argument's
+load-bearing assumption is that synthetic calibration instances resemble real ones closely
+enough, and where they do not the specification is wrong on real data deterministically and
+silently, which is the same shared-misreading class T12 already describes, arriving by a
+different route and covered by the same, largely unperformed, spot audit. It also inherits T8
+without improving it, since the arrangement has been exercised on the same three templates as
+everything else. What T16 adds beyond those two is one item they do not cover: this thesis
+constructs no threat model and does not claim that a published specification is free of
+information traceable to source data, so a reader must not take
+Section~\ref{sec:intro:confidentiality} for a privacy guarantee. That section states the same
+four boundaries in the paragraph that makes the claim, which is the only place where a reader
+who skips this chapter would see them.
 
 \paragraph{T4 --- three primitives rest on a single example.}
 Artifact collections, stacked records, and equality merge between row sets were each validated
@@ -1851,7 +1932,7 @@ cost structure \emph{because} the baseline was accurate, not because the tasks w
 harder.
 
 \paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15;
-normative for T3, T4, T8, T11, T13.}
+normative for T3, T4, T8, T11, T13, T16.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.

@@ -82,17 +82,25 @@ Cost- and variance-aware agent evaluation & A fast-growing evaluation literature
 \end{table}
 
 \paragraph{Scope of the survey, and what ``verified'' means here.}
-The survey records 56 works in \texttt{docs/thesis/refs/manifest.md}, of which 54 are cited
+The survey records 64 works in \texttt{docs/thesis/refs/manifest.md}, of which 62 are cited
 here, with, for each,
-the metadata claimed by the survey draft, the metadata fetched from the publisher or preprint
-page, and the venue as DBLP records it. Two facts about that reconciliation matter for how
+the metadata claimed at the time the citation was proposed, the metadata fetched from the
+publisher or preprint page, and the venue as DBLP records it. Three facts about that
+reconciliation matter for how
 this chapter should be read. First, the survey draft labelled 26 of the 48 primary works
 ``arXiv preprint'' where DBLP records a peer-reviewed venue, and named a title that the cited
 identifier no longer carries in two further cases; the bibliography follows DBLP rather than
 the draft. Second, six works dated 2026 bear a disproportionate share of the argument, and
 for those six the full text was retrieved and the load-bearing sentences copied verbatim into
 \texttt{docs/thesis/refs/abs/}, because they are the works most likely to be
-misremembered in the direction that flatters this thesis. Where this chapter asserts that some
+misremembered in the direction that flatters this thesis. Third, eight of the 64 belong to two
+subject areas the survey draft did not cover at all --- program-aided language models and
+uncertainty quantification --- and were searched and fetched from scratch for
+Sections~\ref{sec:rel:comparison} and~\ref{sec:rel:uncertainty}; one of the eight turned out to
+carry a published title different from the one claimed for it, which is the same class of
+error the original reconciliation found twice. An unreliable source list and an incomplete one
+fail differently: the first produces a wrong sentence that can be grepped for, and the second
+produces no sentence at all. Where this chapter asserts that some
 line of work does \emph{not} do something, that assertion was checked against that set
 and no further; the wording says so each time, and a gap that was not checked is labelled as
 unchecked rather than quietly asserted.
@@ -324,7 +332,7 @@ instance in the same execution probe, where the three failures were the remarks 
 is measured as the six wrong-extent hypotheses in the dataset's own annotation. Mode 4 is
 \emph{not} independently measured: only the rounding function has been audited for decimal
 semantics, and the rest of the format channel is asserted from the scoring policy rather than
-demonstrated. The assertions that modes 3 and 5 have no analogue are checked against the 54
+demonstrated. The assertions that modes 3 and 5 have no analogue are checked against the 62
 surveyed works only, and are stated as such rather than as claims about the literature at
 large.
 
@@ -418,7 +426,7 @@ are real and both are narrow, and stating them narrowly is the point of this sec
 
 For engineering drawings the survey found no comparable line of work: nothing in the surveyed set
 addresses writing into a drawing's entity graph under a preservation obligation. That absence
-is not used as an argument here, for two reasons. It is an absence in a set of 56 works chosen
+is not used as an argument here, for two reasons. It is an absence in a set of 64 works chosen
 for the office carriers, so it is weak evidence about the drawing literature; and the drawing
 carrier is in any case reported only as a case study in this thesis, because the entire system
 was originally built against a drawing template and any figure it produces is contaminated by
@@ -484,13 +492,29 @@ authoring but keep the model at execution \cite{ye2023proagent,huang2025prompt2t
 work automates the authoring and removes the model from execution, with an executable admission
 test at the boundary.
 
+% 2026-08-26（W3）：這一段是那張家族表推翻的第一句話。原文到上一句為止，
+% 而「自動撰寫＋確定性執行」讀起來像一個空著的角落——PBE 已經佔了它十幾年，
+% FlashFill++ 還是出貨產品。這與 §1.2.3 是同一句話的兩個實體，兩處一起改。
+The fourth clause is not, however, a description of an unoccupied position, and
+Table~\ref{tab:rel:families} is where that became visible. Automatic authoring followed by
+deterministic execution is also what programming by example does, and has done since 2011
+\cite{gulwani2011flashfill}, in a shipping spreadsheet product
+\cite{cambronero2023flashfillpp}. What distinguishes this work inside that corner is not that
+it is alone there but what Section~\ref{sec:rel:pbe} sets out: the site of each transformation
+is not given, the coverage of a rules document is an obligation, and the regions that must not
+be written are part of the specification. The corner is shared; the admission test at its
+boundary is what this thesis adds to it.
+
 \paragraph{Status: the taxonomy is normative; each cell is now citation-backed; the claimed
 advantage is unmeasured.}
 No experiment in this thesis varies the automation paradigm, so the three-way division remains
 a positioning argument, exactly as Section~\ref{sec:intro:existing:taxonomy} states; the two
 Status paragraphs must be read as one claim. What this section adds is that each cell of the
 division now rests on a cited work rather than on assertion, which closes the gap that
-Section~\ref{sec:intro:existing:taxonomy} explicitly left open. That the admission test exists
+Section~\ref{sec:intro:existing:taxonomy} explicitly left open. It also subtracts something:
+the division is three-way over \emph{these} traditions and is not a partition of the design
+space, since programming by example sits in the same corner as this work and was omitted from
+the original formulation, as Table~\ref{tab:rel:families} shows. That the admission test exists
 and rejects specifications is implementation-backed --- it has rejected real derived
 specifications, including one whose totals had no source and one whose repeat block was offset
 by a row. That the resulting arrangement is \emph{better} than either corner is not measured
@@ -823,9 +847,14 @@ Honesty requires one more thing of this section. The variance that this thesis r
 execution-time variance, and it did not remove variance from the method as a whole; it moved it
 into derivation, where it has been measured. Two consecutive derivations over identical prompts
 and identical payloads produced specifications differing in slot count, in the number of
-repeat blocks, in rule coverage and in hard-error count. That measurement is this thesis's own,
+repeat blocks, in rule coverage and in hard-error count; four such derivations exist in all,
+and Section~\ref{sec:eval:reruns} is the single place that reports their spread, so that this
+chapter and Chapter~\ref{ch:evaluation} do not end up quoting two sample sizes for one
+quantity. That measurement is this thesis's own,
 it is reported rather than omitted, and it is the reason research question two asks about
-consistency separately for the two phases.
+consistency separately for the two phases. Section~\ref{sec:rel:uncertainty} supplies the
+vocabulary in which such a spread should be stated, which this section deliberately does not
+attempt in passing.
 
 \paragraph{Status: the gap is citation-backed and narrowed; execution determinism is
 implementation-backed; every comparative cost figure is unmeasured.}
@@ -843,3 +872,296 @@ undecided and must be fixed before the formal experiment. Section~\ref{sec:eval:
 the corresponding threats; the bias direction of an unmeasured break-even point is favourable to
 this thesis, since a break-even count large enough would undermine the amortization argument
 entirely.
+
+\section{The Families Side by Side}
+\label{sec:rel:comparison}
+
+% 2026-08-26 動筆（W3）。教授明說這一條最重要，而它的失敗方向是稻草人化：
+% 第 1 章已經被查證推翻過一次同型的東西（骨架把已實作的對照組寫成沒被測試過）。
+% 所以體例是：**每一格要嘛指得出一篇被抓取過的文獻，要嘛留白並說出留白的理由**，
+% 不得用「一般而言」填滿。留白本身是本節最有價值的輸出——第 4 欄是本論文的頭條
+% 指標，而它是四欄裡最空的一欄。
+%
+% 表放在第 2 章的最後而不是開頭，理由是每一格的證據是本章的一節而不是表裡那一句話；
+% 放開頭會讓讀者先看到十個未經論證的斷言。§1.2.3 保留三句話的簡版並前向引用這張表，
+% **權威是這張表**，不是那三句話（兩處各記一份就會漂移，§0 已經為此重整過一次）。
+
+The preceding eleven sections each argue one relationship, which is the right shape for an
+argument and the wrong shape for a reader who wants to know where this work sits. The
+question a reviewer actually asks --- given a recurring task of this kind, what are the
+available architectures, and on which axis does this one differ --- is not answered anywhere
+above, because the answer is distributed across eleven separate discussions. This section
+puts the families in one coordinate system.
+
+Four coordinates are used, chosen because each is decidable from a work's own description
+rather than being a judgement about quality: whether a model is invoked at execution time,
+what the approach guarantees, how the marginal cost grows with the instance count $N$, and
+what happens when the output is wrong. The fourth is this thesis's headline measure
+(Section~\ref{sec:eval:channels}), which makes the table a precondition for
+Section~\ref{sec:eval:threats} as much as a summary of this chapter.
+
+\begin{table}[p]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Where each family puts the model, and what follows from that. Every non-empty cell
+is read from a work whose abstract or full text was fetched for this survey; \emph{not
+stated} marks a cell the surveyed material does not settle, and is not a claim that the
+question is unanswered elsewhere.}
+\label{tab:rel:families}
+\begin{tabular}{p{0.145\linewidth}p{0.145\linewidth}p{0.205\linewidth}p{0.165\linewidth}p{0.205\linewidth}}
+\hline
+\textbf{Family} & \textbf{Model at execution} & \textbf{What is guaranteed} &
+\textbf{Marginal cost in $N$} & \textbf{When it is wrong} \\
+\hline
+Per-instance agent (Arm A)
+& Every instance
+& Nothing beyond what an execution-based grader checks afterwards
+  \cite{xie2024osworld,lv2026mindthegap}
+& $O(N)$ inferences
+& Silent corruption of documents, sparse but severe \cite{laban2026delegate} \\
+\hline
+Self-consistency, majority voting
+& Every instance, $k$ samples
+& Agreement among the $k$ samples; nothing external to them
+  \cite{wang2023selfconsistency}
+& $O(kN)$ inferences; the marginal accuracy often fails to justify the cost
+  \cite{erol2025costofpass}
+& \emph{not stated} \\
+\hline
+Constrained or structured decoding
+& Every instance (the constraint acts during decoding)
+& Output is well formed for the grammar or schema \cite{scholak2021picard}
+& $O(N)$ inferences
+& Ill-formed output is refused as it is decoded; a well-formed output carrying a wrong value
+  is not (Section~\ref{sec:rel:verification}) \\
+\hline
+LLM-as-judge
+& Every instance, plus a second inference to score it
+& Nothing decidable: strong judges are close to random on objectively hard pairs
+  \cite{tan2025judgebench}
+& $O(N)$ generation plus $O(N)$ judging
+& Accepts silently; robustness swings with the prompt template and the judge model
+  \cite{li2025judgerobustness} \\
+\hline
+Program-aided LM (PAL, PoT)
+& Every instance: the model emits the program, an interpreter runs it
+  \cite{gao2023pal,chen2023pot}
+& The arithmetic is the interpreter's rather than the model's \cite{gao2023pal}
+& $O(N)$ inferences plus $O(N)$ short program executions
+& \emph{not stated} \\
+\hline
+Tool making, skill libraries (Arm B)
+& Every instance: the tool user is a model, with code generation as fallback
+  \cite{kujanpaa2026toolmaking}
+& Tools are validated before reuse \cite{wang2024trove,yuan2024craft} and qualified against
+  labelled historical cases \cite{kujanpaa2026toolmaking}
+& $O(1)$ tool construction plus $O(N)$ agent inference \cite{cai2024latm}
+& End-to-end error rate reduced by up to 53\%, not removed
+  \cite{kujanpaa2026toolmaking}; the shape of the residue is \emph{not stated} \\
+\hline
+Agentic workflow construction
+& Every instance: the model builds the workflow \emph{and} decides during execution
+  \cite{ye2023proagent}
+& \emph{not stated} as a decidable property in either work
+& $O(1)$ construction plus $O(N)$ inference
+& \emph{not stated} \\
+\hline
+Programming by example
+& \textbf{None}: a synthesized program runs \cite{gulwani2011flashfill}
+& Consistency with the supplied examples; candidates are ranked and disambiguating examples
+  are requested \cite{gulwani2011flashfill}
+& $O(1)$ synthesis plus $O(N)$ deterministic executions
+& A wrongly generalized program writes a wrong value without complaint; strong in
+  distribution and weak out of it \cite{li2024pbesolved} \\
+\hline
+RPA, template-filling tooling
+& \textbf{None}
+& That the program does what a person authored \cite{wewerka2020rpa}
+& $O(1)$ \emph{human} authoring plus $O(N)$ deterministic executions
+& \emph{not stated}: the systematic review is an assessment framework, not a failure taxonomy
+  \cite{wewerka2020rpa} \\
+\hline
+\textbf{This work}
+& \textbf{None}, pinned by a negative control that fails if a call site is added
+  (Section~\ref{sec:rel:toolmaking})
+& Structural gates, a semantic oracle against an independently produced expected artifact,
+  and coverage of a rules document, all discharged before publication
+  (Chapter~\ref{ch:method})
+& $O(1)$ derivation including every repair, plus $O(N)$ deterministic executions
+& Silent failure is a scored outcome with its own denominator; observed at 3 of 350 semantic
+  checks on a real specification (Section~\ref{sec:eval:randomness}) \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{The blanks are the most useful part of the table, and they cluster in one column.}
+Four families have no entry in the last column and a fifth has only half of one. That column
+asks what a reader most needs to know before putting an architecture on the critical path of a
+customs declaration, and for most of these families the surveyed material simply does not
+answer it. The blanks are marked rather than filled, because filling them from general
+impression is precisely the failure this table is most exposed to. Two qualifications keep
+them honest. First, \emph{not stated} means the fetched abstract does not settle the question;
+the two works whose full text was retrieved and read for this column are Kujanpää et al.\ and
+Mind the Gap, so the blanks elsewhere rest on a weaker check than the entries do. Second, a
+blank is not a deficiency claim about the family: a system's failure shape can be well
+understood by its authors and simply not be the subject of the paper that this survey fetched.
+
+\paragraph{There are two dangerous neighbours, not one, and they are dangerous in different
+columns.}
+Reading the table by column rather than by row makes visible something that eleven sections of
+prose could not. Program-aided language models are the dangerous neighbour in the second
+column: PAL takes the arithmetic away from the model and gives it to an interpreter
+\cite{gao2023pal}, and PoT states the same separation as its title \cite{chen2023pot}, which is
+the same instinct this thesis has about where computation belongs. They are not neighbours in
+the third column, because the program is regenerated for every question, so the inference count
+is still $O(N)$ and nothing persists to be reviewed, hashed or diffed. Programming by example
+is the opposite case. It is the dangerous neighbour in the \emph{first and third} columns ---
+no model runs at execution, and a one-time synthesis amortizes over $N$ deterministic
+executions, which is exactly this thesis's cost shape and has been that shape since 2011
+\cite{gulwani2011flashfill} --- while differing in the second, for the reason
+Section~\ref{sec:rel:pbe} gives at length: a programming-by-example system is handed the site
+of the transformation, and this one has to infer where in a native artifact each value goes and
+which locations must be left alone.
+
+\paragraph{A claim this table withdraws.}
+An earlier formulation of the positioning, in Section~\ref{sec:intro:existing:taxonomy} and at
+the close of Section~\ref{sec:rel:rpa}, described the corner in which authoring is automatic
+and execution is deterministic as empty. Laid out in columns, it is not: programming by example
+has occupied it for over a decade, and FlashFill++ occupies it in a shipping spreadsheet
+product \cite{cambronero2023flashfillpp}. Both sections have been corrected to say so. What
+survives is narrower and is the thing this thesis actually defends --- not that the corner is
+empty, but that no occupant of it addresses the unknown-binding problem, the coverage of a
+rules document, or the obligation to leave a native artifact's non-target regions untouched.
+Nothing in the argument depended on the corner being empty; the sentence was simply stronger
+than the evidence, in the direction that flattered this thesis, which is the direction
+Chapter~\ref{ch:intro} has already been corrected in once.
+
+\paragraph{Status: the table is citation-backed cell by cell; the blanks are scoped to the
+surveyed material; the arrangement is normative.}
+Every non-empty cell above is read from a work recorded in
+\texttt{docs/thesis/refs/manifest.md} with its fetched metadata and its DBLP venue, and the
+per-work verbatim abstracts are in \texttt{docs/thesis/refs/abs/}. The two families added for
+this table --- program-aided language models and, in the next section, uncertainty
+quantification --- were absent from the survey draft entirely, so their eight works were
+searched, fetched and reconciled from scratch rather than transcribed; one of the eight was
+found to carry a different published title than the one claimed for it, and the bibliography
+follows the published one. That this particular set of four coordinates is the right one is a
+choice of this thesis and not a finding: a different reader could reasonably want a column for
+latency, for human effort, or for how much of the task each family covers, and none of those
+is here. No cell states a comparative result, because none exists: no experiment in this
+thesis runs any system named in the table, and the only rows with measured numbers are the
+ones citing measurements those authors reported or measurements taken in this repository.
+
+\section{Quantifying the Uncertainty of One Derivation}
+\label{sec:rel:uncertainty}
+
+% 2026-08-26 動筆（W4）。教授把它與 W3 一起提，而它是那張表第 2 欄的度量單位。
+% 動筆前的兩次 grep 很難看：
+%   grep -riE "self-consisten|semantic entropy|conformal|calibrat|uncertainty|logprob|
+%              majority vot|temperature" Sections/*.tex
+%   → 全六章只有一個實質命中（本章 Cost-of-Pass 那句順帶提到 majority voting）
+%   書目 56 筆裡 0 筆是不確定性量化
+% 而 §5.8.1 整節在講「隨機性搬家」、§5.4.1 定義 D=3 與 R，pilot 量到 69.2%、
+% 四次 derive 覆蓋率 15/12/19/23。**一個領域有標準量法而我們用土話講同一件事。**
+%
+% 三處的分工，改任何一處都要同步：
+%   本節 = 詞彙與分層（別人量的是哪一層），**不重述搬家，也不定義 D=3**
+%   §5.4.1 = D=3 的設計、隔離條件、空表（量法的權威）
+%   §5.8.1 = 搬過去買到什麼、什麼時候不划算（交換條件的權威）
+
+The previous section's second column asks what an approach guarantees, and for every family
+whose execution routes through a model the honest answer is a probability rather than a
+property. There is a mature vocabulary for stating such answers precisely, this thesis has so
+far used none of it, and that omission is worth repairing carefully, because the standard
+measures turn out to be unable to say anything about this method at execution time --- which
+is the point rather than an inconvenience.
+
+\paragraph{What the field measures, and at which layer.}
+Five layers can be distinguished, and which layer a measure operates at determines what it can
+see. At the \emph{token and sequence} layer, uncertainty is read from the model's own output
+distribution; Malinin and Gales set out token-level and sequence-level estimators for
+autoregressive structured prediction within one ensemble-based framework and give baselines for
+token- and sequence-level error detection \cite{malinin2021uncertainty}. At the \emph{semantic}
+layer, the object of measurement is meaning rather than surface form, because different
+sentences can mean the same thing: semantic entropy clusters generations by meaning before
+computing an entropy over them, and is more predictive of accuracy than surface-level
+baselines \cite{kuhn2023semanticuncertainty}, a line strong enough to have been developed into
+a hallucination detector reported in a general-science venue
+\cite{farquhar2024semanticentropy}. At the \emph{sampling} layer, dispersion over repeated
+samples of the same problem becomes the signal: self-consistency samples several reasoning
+paths and marginalizes over them \cite{wang2023selfconsistency}, and $\tau$-bench's
+$\mathrm{pass}^k$ asks whether an agent succeeds on all $k$ of its runs rather than on one
+\cite{yao2025taubench}. At the \emph{calibration} layer, the question is whether stated
+confidence tracks correctness, and verbalized confidences emitted as output tokens turn out to
+be better calibrated than the model's own conditional probabilities for models fine-tuned with
+human feedback \cite{tian2023calibration}. And at the \emph{distribution-free} layer, conformal
+methods wrap the generator: conformal language modelling calibrates a stopping rule for
+sampling outputs until the returned set provably contains an acceptable answer with high
+probability \cite{quach2024conformal}.
+
+\paragraph{Every one of them becomes silent at this thesis's execution step, and that is the
+argument.}
+Four of the five layers require access to a model's output distribution or to repeated samples
+of the same input, and the fifth requires a stated confidence. At execution time this method
+offers none of these, for the reason that is its entire claim: there is no model, so there is
+no distribution to take an entropy over, no set of samples to disagree, and nobody to ask for a
+confidence. Applied to the execution step, every measure above returns the same reading it
+would return for a hand-written program. That is a strong statement and it must be stated in
+the direction that costs something: \emph{these instruments cannot distinguish this method from
+a hand-written program at execution time, and they equally cannot certify that either one is
+correct.} A dispersion of zero is a fact about repeatability, not about truth --- a
+specification that is deterministically wrong is deterministically wrong every time, and
+Section~\ref{sec:eval:channels} scores that outcome under its own name rather than letting a
+consistency figure absorb it.
+
+The question therefore has to be restated rather than answered in the field's usual terms. The
+quantity of interest is not how uncertain each of $N$ outputs is; it is how uncertain the
+\emph{one derivation} was. Written as a factorization, the total dispersion of a run of $N$
+instances is a derivation-time term multiplied by an execution-time term that is zero by
+construction, against a baseline whose per-instance term is nonzero and is incurred $N$ times.
+The consequence for measurement is that the sampling layer is the only one of the five that
+transfers, and it transfers to a different object: instead of $k$ samples of one answer, the
+unit becomes $D$ independent derivations of one template, compared as a distribution over
+specifications. Section~\ref{sec:eval:reruns} defines that measurement, its isolation
+conditions and the table it will fill; Section~\ref{sec:eval:randomness} argues separately
+about what the relocation bought and where the bargain fails. Neither is restated here.
+
+\paragraph{What is already in hand, what is missing, and what none of it reaches.}
+Two dispersion measurements exist and both are reported elsewhere in this thesis rather than
+introduced here: three runs of a frontier agent over one instance produced three distinct file
+digests at 69.2\% cell-level agreement, and four derivations of the spreadsheet template with
+identical prompt, payload and input bytes produced rule coverage of 15, 12, 19 and 23 out of 27
+(Section~\ref{sec:eval:reruns}). The second figure is worth pausing on, because the temptation
+is to present the vocabulary of this section as an improvement. It is not. Naming the
+derivation-time term does not shrink it, and a spread of 15 to 23 on a 27-item denominator is
+large; the vocabulary makes it \emph{describable} and therefore reportable, which is the whole
+of the gain. Two quantities are missing and are named as such: the cold-start distribution over
+$D$ independent derivations under the isolation conditions of
+Section~\ref{sec:eval:reruns}, and a specification-level analogue of the silent-failure rate
+--- how often a specification passes every gate and is still wrong. One methodological limit
+bears on both and is the reason no calibration curve will appear in this thesis: the
+calibration and conformal layers assume the same problem can be resampled cheaply, and one
+derivation here costs 550 to 930 seconds of wall clock and real money, so $D=3$ is a budget
+ceiling rather than a design preference. What this thesis can report is a dispersion, not a
+calibration. Finally, none of this touches whether the reference outputs themselves are right;
+that is a separate threat with a separate countermeasure
+(Section~\ref{sec:eval:selfvalidation}), and conflating a consistency measure with a
+correctness measure is exactly the error Section~\ref{sec:eval:channels} forbids.
+
+\paragraph{Status: the taxonomy is citation-backed; the zero-dispersion property is
+implementation-backed; the reframing is normative and one of its two quantities is unmeasured.}
+Each of the five layers is characterized from the fetched abstract of the work cited for it,
+and all six works of this section were added to \texttt{docs/thesis/refs/manifest.md} in this
+round with their DBLP venues, because the survey draft contained no bucket for them at all.
+That execution-time dispersion is zero is implementation-backed by the negative-control test
+named in Section~\ref{sec:rel:toolmaking} together with the byte-identity measurement of
+Section~\ref{sec:eval:metrics}, and the qualification that the container digest of a Word
+package is \emph{not} identical across writes is recorded there rather than smoothed over here.
+The factorization is a description of this architecture rather than a result, and the claim
+this section deliberately does not make is that relocating the uncertainty reduced it: the
+measured derivation-time spread is wide, it is reported in full, and it is unfavourable to this
+thesis. The bias direction of the missing cold-start distribution runs the other way, towards
+this thesis, since the four derivations that exist were run for debugging across changing
+versions of the system and a reader has no way to know whether an isolated replicate would
+disperse more or less.
