@@ -718,6 +718,11 @@ Arms A and B receive an input list that is byte-identical to the one Arm C's der
 receives, because an advantage produced by handing one arm a cleaner or richer set of inputs
 is not an advantage of the method. The frozen input manifest is truth-free by construction and
 its envelope is hashable, so what each arm was given is recorded rather than asserted.
+That parity holds as an authorisation and, for one phase, not as a description of consumption:
+Arm~C's derivation reads one of the $K$ calibration instances its envelope lists, because a
+derivation dataset carries one source instance and one reference output per document role. The
+discrepancy, its bias direction --- against the proposed method --- and why declaring less for
+Arm~C would fail a correct run are T18.
 
 Material parity has a specific consequence that must be stated because it works against the
 proposed method. The rule material given to any arm may not contain target coordinates ---
@@ -1996,6 +2001,35 @@ have been a reduction of the thesis claim to match the implementation. The threa
 rather than deleted, because every integrity figure produced before that correction is an
 artifact of the writer and not a result.
 
+\paragraph{T18 --- the compiled arm's derivation sees one calibration instance, and the
+envelope declares three.}
+The fairness condition of Section~\ref{sec:eval:baselines} requires that the calibration material
+visible to Arm~A's execution, Arm~B's skill build and Arm~C's derivation be identical, and the
+cross-arm audit compares those artifact sets exactly. It holds as an \emph{authorisation}: all
+three envelopes list the same $K=3$ inputs and reference outputs. It does not hold as a
+description of consumption. A derivation dataset in the implemented system carries one source
+instance and one reference output per document role, so the derivation reads one of the three
+worked examples while both baselines read all three. The limit is the product's data model,
+not a setting: there is no second slot to fill.
+
+Declaring only the consumed instance was considered and rejected. The parity audit compares
+per-role artifact sets, so an Arm~C envelope listing one calibration instance against Arm~A's
+three would fail a correct run --- and a check that rejects a correct action is worse than no
+check, a lesson this system has paid for repeatedly. What is enforced instead is the property
+that a wrong implementation could actually violate: the replicate setup ingests only bytes the
+envelope authorised, refuses anything else, and records the SHA-256 of every file it did hand
+to the product, so the instance each derivation consumed is in the evidence rather than in a
+claim.
+
+The bias favours the baselines. Arms~A and~B see three input/output pairs; the derivation sees
+one. Whether a derivation given all three would produce a better specification is unmeasured,
+and so is the converse --- how much the additional two examples are worth to a per-instance
+agent. Neither can be settled without a change to the data model and a second paid campaign.
+The disclosure exists because the discrepancy was found before the first Arm~C derivation was
+paid for, by enumerating what the envelope declares against what the product reads, and
+because it runs in the unusual direction: most gaps of this kind, as
+Section~\ref{sec:eval:threats} notes elsewhere, lean the other way.
+
 \paragraph{T6 --- the DOCX write path has not had the same audit.}
 The correction in T5 covers XLSX only. The layout-bearing parts of a Word package have not
 been enumerated part by part, and S4 is the only DOCX evaluation dataset. Any DOCX integrity
@@ -2191,7 +2225,7 @@ cost structure \emph{because} the baseline was accurate, not because the tasks w
 harder.
 
 \paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15,
-T17; normative for T3, T4, T8, T11, T13, T16.}
+T17, T18; normative for T3, T4, T8, T11, T13, T16.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
