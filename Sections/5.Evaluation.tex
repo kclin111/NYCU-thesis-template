@@ -71,9 +71,12 @@ would be choosing the opponent. Both are validity threats, and both are recorded
 in Section~\ref{sec:eval:threats}.
 
 \paragraph{Status: implementation-backed as a measurement, normative as a research plan.}
-The pilot above was executed and its artifacts are retained. The five questions are a plan;
-the formal experiment has not been run, and no figure in this chapter should be read as an
-answer to any of them.
+The pilot above was executed and its artifacts are retained. The five questions are a plan.
+The formal experiment has \emph{begun} --- nine scored-eligible attempts across three
+templates and two arms are recorded, and Section~\ref{sec:eval:results} reports exactly what
+they do and do not settle --- but no template has a complete arm and the compiled arm has not
+been run at all, so no figure in this chapter should yet be read as an answer to any of the
+five questions.
 
 \section{Study Design}
 \label{sec:eval:design}
@@ -203,7 +206,10 @@ bytes and permanently carrying four defects, among them a generator that was not
 byte-idempotent, which is precisely the condition that makes a seal on presence useless.
 The bytes were changed. What licenses that is not the seal file --- which cannot establish
 an ordering --- but the protocol's actual condition, that instances be added before any arm
-is scored on them: no arm has been scored on any S4 evaluation instance. Value-neutrality
+is scored on them. That condition held when the bytes were changed on 29 August: no arm had
+been scored on any S4 evaluation instance, and the first that was came a day later, from a
+commit that postdates the reseal. The ordering is therefore checkable in the history rather
+than asserted here. Value-neutrality
 was then proved rather than asserted, by regenerating the ten pre-existing instances in a
 mirrored tree and comparing every ground-truth key and every decompressed package part:
 two hundred and thirty declared differences, none value-bearing, with all sixteen expected
@@ -1097,7 +1103,8 @@ and a reader cannot infer one from the other.
 \centering
 \small
 \caption{Derivation-time dispersion, $D=3$ isolated replicates per evaluation template. The
-columns are fixed in advance; the experiment has not been run and no cell carries a number.}
+columns are fixed in advance; no replicate has been derived under the protocol and no cell
+carries a number.}
 \label{tab:eval:derivationdispersion}
 \begin{tabular}{p{0.135\linewidth}p{0.145\linewidth}p{0.125\linewidth}p{0.125\linewidth}p{0.15\linewidth}p{0.155\linewidth}}
 \hline
@@ -1567,13 +1574,67 @@ anywhere in this thesis on the strength of the sweep alone.
 \section{Results}
 \label{sec:eval:results}
 
-The formal experiment has not been run, and this section carries no figures. What is settled is
-the shape in which they will be reported: one row per evaluation template with no average across
-templates, because carriers may not be pooled into a single accuracy; the per-channel
-denominators of Section~\ref{sec:eval:metrics} kept separate rather than aggregated; and any
-externally sourced template reported in its own subsection rather than inside that average, since
-it answers a validity question rather than a capability one. The subsection below is written now
-because it does not depend on the numbers.
+The formal experiment began on 30 August 2026 and this section still carries no table, because
+the quantity every row of that table reports is a proportion over all $M=30$ evaluation
+instances and no template has been run to completion. What exists is a first batch, and it is
+described here rather than tabulated so that a partial run cannot be read as a result.
+
+\paragraph{What has been run, and what it is not.}
+Nine attempts are recorded with \texttt{eligibility: formal}, all successful, all validated
+against the frozen evidence schema: on S4, two Arm~A executions, one Arm~B skill build and two
+Arm~B executions; on X1 and on S5, two Arm~A executions each. Six produced documents were
+scored by the shared evaluator. Every one of the six is \emph{semantically} perfect --- 52 and
+172 scored fields on the two S4 instances under both arms, 70 and 114 on X1, 60 and 60 on S5 ---
+and none is a silent failure. That is $6$ of the $90$ instance-arm cells the main table needs,
+from a campaign whose declared size is $50$ agent runs per arm per template plus $D=3$
+derivations, so it fixes no proportion and no interval. It is reported because the alternative
+--- saying nothing until the campaign completes --- would leave the three findings below
+undiscoverable, and each of them changes how the completed table must be read.
+
+\paragraph{The XLSX integrity channel already separates the arms, and not for the reason it
+looks like.}
+All six scored cases pass every correctness channel, and four of them fail overall on the
+integrity channel's critical-part check. The two X1 outputs lost their drawing and
+printer-settings parts; the two S5 outputs kept the drawing part and changed it; the two
+DOCX outputs are clean. This is the failure ADR~0012 removed from the compiled arm's own
+writer, appearing now on the baseline --- and the comparison is not yet
+fair, for a reason internal to this study rather than to the baseline. The frozen Arm~A prompt
+requires that the template's layout not be changed and, four lines later, names
+\texttt{openpyxl} as available; a single \texttt{openpyxl} round trip is precisely the
+negative control this channel uses, because it drops those parts. The harness recommended a
+tool that cannot satisfy the harness's own instruction. The prompt is frozen and its digest is
+carried in every envelope, so it has not been changed --- altering the configuration after
+seeing a result is what the methodology freeze exists to prevent --- and
+the consequence is recorded as a threat with its bias direction named in
+Section~\ref{sec:eval:threats}. The integrity column may not be reported without it.
+
+\paragraph{The cost currency is not currency.}
+Every one of the nine attempts reports \texttt{cost\_usd} of exactly zero, because the
+provider is accessed through a subscription that bills no per-call amount. The aggregator of
+Section~\ref{sec:eval:cost} therefore returns a per-instance cost of \$0.00, which is a true
+statement about this billing arrangement and useless as a cost model: a break-even instance
+count computed from it is undefined. Section~\ref{sec:eval:reruns} had already recorded that
+subscription billing reports zero; what it had not done is connect that to RQ3's denominator.
+The measurable units are tokens and wall clock, and the first batch fixes their order of
+magnitude: an Arm~A execution took 198--261 seconds and 53{,}360--94{,}699 input tokens, an
+Arm~B execution 330--386 seconds and 36{,}401--61{,}719, and the one-off Arm~B skill build 270
+seconds and 59{,}305. The budget estimate of Section~\ref{sec:eval:reruns}, which assumed
+2.9 minutes per session, is corrected by these to roughly 4.8 minutes.
+
+\paragraph{Arm~B is not structurally cheaper than Arm~A.}
+Its execution envelope authorizes strictly less material --- the template, the instance and the
+frozen skill, with no rule document and no calibration set --- and on the second S4 instance it
+nevertheless consumed more input than Arm~A did, 61{,}719 against 53{,}360, because it produced
+more output across a longer exchange and a multi-turn session reads its own output back. Any
+sentence of the form ``the reused-skill arm is cheaper because it sees less'' is unsupported and
+is not made in this thesis.
+
+\paragraph{The reporting shape, unchanged.}
+One row per evaluation template with no average across templates, because carriers may not be
+pooled into a single accuracy; the per-channel denominators of Section~\ref{sec:eval:metrics}
+kept separate rather than aggregated; and any externally sourced template reported in its own
+subsection rather than inside that average, since it answers a validity question rather than a
+capability one. The subsection below is written now because it does not depend on the numbers.
 
 % TODO 實驗尚未執行。呈現形式先定：
 %      Table 主結果（三 arm x 全部指標）
@@ -1880,6 +1941,32 @@ Section~\ref{sec:intro:confidentiality} for a privacy guarantee. That section st
 four boundaries in the paragraph that makes the claim, which is the only place where a reader
 who skips this chapter would see them.
 
+\paragraph{T17 --- the baseline was pointed at a library that cannot obey the instruction it
+was given.}
+The frozen Arm~A prompt says that the template's layout, label text and table structure must
+not be changed, and four lines later says that \texttt{openpyxl} is available. A single
+\texttt{openpyxl} round trip drops \texttt{xl/drawings} and \texttt{xl/printerSettings} ---
+that is exactly the operation the integrity channel uses as its negative control, and exactly
+the defect T5 records the compiled arm's own writer having had. In the first formal batch the
+baseline used the named library and every XLSX output failed
+\texttt{integrity/critical-parts}: the two X1 outputs lost both parts, the two S5 outputs kept
+the drawing part and changed it, and the two DOCX outputs were clean. Every one of the six was
+semantically perfect.
+
+The direction is unambiguous. Any integrity comparison that reports the compiled arm preserving
+what the baseline destroys is partly measuring which library this study's own prompt suggested,
+and the suggestion sits inside the material the study controls. The prompt has not been changed
+in response: its digest is carried in every sealed envelope, and altering the configuration
+after seeing a result is what the methodology freeze exists to prevent, so the correction would
+be a re-declared campaign rather than an edit. Until that happens, the integrity column may be
+reported only alongside this paragraph, or not at all.
+
+What is \emph{not} claimed here is that the baseline could not have preserved the parts. The
+task is achievable --- the compiled arm achieves it by editing one package part and copying the
+rest --- and nothing in the prompt forbids that route. Whether an agent that had not been
+pointed at \texttt{openpyxl} would have found it is unmeasured, and measuring it would require
+a second campaign under a second declaration.
+
 \paragraph{T4 --- three primitives rest on a single example.}
 Artifact collections, stacked records, and equality merge between row sets were each validated
 on one dataset, and it is the same dataset in all three cases. The key--value extent added for
@@ -2103,8 +2190,8 @@ Recording them here is part of the claim: the emphasis of this thesis moved to c
 cost structure \emph{because} the baseline was accurate, not because the tasks were made
 harder.
 
-\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15;
-normative for T3, T4, T8, T11, T13, T16.}
+\paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15,
+T17; normative for T3, T4, T8, T11, T13, T16.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
