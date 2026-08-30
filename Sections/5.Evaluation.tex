@@ -184,11 +184,14 @@ All three datasets are now sealed --- and sealed by mechanism rather than by con
 which they were not before 26 August 2026: their generators rewrote every case
 unconditionally, evaluation included, while three documents described them as sealed. A
 shared guard now pins each evaluation file by digest and refuses to regenerate it. X1's and
-S4's seals are closed, because their thirty exist and their membership is settled; S5's is
-open because the human audit will rewrite every ground truth with its audit block and then
-close it. All three remain at the pre-seal boundary described below, and the word ``sealed''
-therefore does two jobs that this chapter keeps apart: content frozen, and content checked by
-a person. \emph{No dataset in this study has the second.}
+S4's seals were closed first, because their thirty exist and their membership is settled;
+S5's stayed open until its audit was recorded, because recording one rewrites every ground
+truth with its audit block. On 30 August 2026 all three were superseded by closed seals
+carrying a review digest, so no open seal remains anywhere in the repository. The word
+``sealed'' therefore does two jobs that this chapter keeps apart: content frozen, and content
+checked by a person. \emph{All three datasets now have both}, and the second is weaker than
+the annotation procedure specifies --- Section~\ref{sec:eval:threats:mixed}, T12, states
+exactly how.
 
 Closing S4's seal required rewriting bytes that a seal already pinned, and the reason is
 worth stating because it is the only such case. X1's enlargement fell entirely in modules
@@ -214,9 +217,10 @@ closed it rejected a \emph{calibration} instance --- a check that had never once
 state it was written for. A check that rejects a correct action is worse than no check.
 
 \paragraph{Template level.}
-Three evaluation-template artifacts now exist, all three at thirty evaluation instances and
-all three with their content sealed, but \emph{none} is formal-ready, because none has the
-human audit:
+Three evaluation-template artifacts now exist, all three at thirty evaluation instances, all
+three with their content sealed, and all three carrying a signed human audit as of 30 August
+2026 --- a review weaker than the annotation manual asks for, recorded as such in the audit
+file itself and reported in T12:
 
 \begin{itemize}
   \item \textbf{S4} (DOCX): a Commercial Invoice and a Packing List produced together from a
@@ -243,12 +247,12 @@ human audit:
     qualified, fourteen not qualified and four refusals, with one to eight of the eight
     course slots used. Its three calibration and two development literals, independent
     oracle, output-only aggregate cross-check and eight-channel mutations are built, and its
-    thirty evaluation instances are frozen by a content seal. The required per-instance
-    human spot audit is not done, and the audit seal that would record it does not exist.
-    \emph{Those are two different seals}, and the distinction is load-bearing: freezing the
-    bytes had to happen first, because an audit cannot cover a set that is still being added
-    to, so a dataset in this study can carry a seal that does not mean ``a person has
-    checked this'' --- and since 29 August 2026 all three do. Three mechanisms that had been reading the seal file's
+    thirty evaluation instances are frozen by a content seal; all thirty-five of its stored
+    cases were reviewed on 30 August 2026. \emph{Those are two different seals}, and
+    the distinction is load-bearing: freezing the bytes had to happen first, because an audit
+    cannot cover a set that is still being added to, so for two days a dataset in this study
+    carried a seal that did not mean ``a person has checked this'' --- and for those two days
+    all three did. Three mechanisms that had been reading the seal file's
     existence as though it did were changed to read the recorded review digest instead ---
     the one that mattered would otherwise have gone quiet without turning anything red.
 \end{itemize}
@@ -314,15 +318,17 @@ level, with the bias direction stated.}
 This subsection states what an evaluation dataset must satisfy, as conditions that can be
 checked before the dataset is used rather than inferred from the artifacts afterward. The
 ordering was deliberate: these conditions were frozen before S5 was built. All three datasets
-are now checked against them and all three remain pre-seal in the sense that matters --- their
-content is frozen and no person has audited it --- so the checklist is also the exact boundary
-between ``constructed'' and ``formal-ready''.
+are now checked against them, and all three passed the last of them on 30 August 2026, when
+their content --- frozen since 26--29 August --- was reviewed by a person and the review
+recorded in each seal. The checklist is therefore the exact boundary between ``constructed''
+and ``formal-ready'', and it is the boundary the datasets crossed last, three days after the
+mechanical conditions were all green.
 
 That ordering also guards against a specific failure of this kind of writing. A constraint
 written after the artifacts it governs tends to be satisfied by construction, and a constraint
 that nothing has ever violated has not been shown to carry any force. Every condition below is
-therefore reported together with the result of checking it against both built datasets, and
-two of the conditions are not satisfied.
+therefore reported together with the result of checking it against all three built datasets,
+and two of the conditions are not satisfied in full.
 
 \paragraph{Three artifacts per case, and the direction in which they are derived.}
 Each case is produced by a hand-written generator that emits an input set, an expected
@@ -504,18 +510,31 @@ representation in the main table at all, and could only be inferred indirectly f
 axis.
 
 \paragraph{What is not satisfied: the human half of the procedure.}
-Two of the annotation manual's requirements are procedural rather than structural, and neither
-has been met. The manual requires that a second person independently redo the judgement step
-for each template, and that each instance receive a spot check of at least three fields
-recomputed by hand from the sources, including one aggregate and one negative obligation.
-Counted across all one hundred and thirteen stored instances of the four datasets: every
-ground truth records its reviewer as pending; one of the thirty-five DOCX instances carries a
-spot check, of six fields and twenty-five minutes; one of the thirty-five instances of the
-first XLSX template carries one, likewise six fields and twenty-five minutes; none of the
-thirty-five instances of the second XLSX template carries one; none of the eight pilot
-instances carries one. The lower bound was relaxed on 26 August 2026 from every instance to
-three per template, and against the relaxed bound the count is one of three, one of three and
-none of three.
+Two of the annotation manual's requirements are procedural rather than structural. One has
+now been met in part and the other not at all. The manual requires that a second person
+independently redo the judgement step for each template, and that each instance receive a
+spot check of at least three fields recomputed by hand from the sources, including one
+aggregate and one negative obligation.
+
+The spot check was signed on 30 August 2026. Counted across all one hundred and thirteen
+stored instances of the four datasets, forty-two now name a reviewer --- three DOCX
+instances, four of the first XLSX template and all thirty-five stored cases of the second,
+with none of the eight pilot instances --- so against the bound relaxed on 26 August from
+every instance to three evaluation instances per template, the count is three of three, four
+of three and thirty of three. \emph{By method it is met nowhere.} What the manual asks for is
+an independent hand recomputation performed without opening the expected artifacts, and what
+was done was a per-case read-through of each ground truth against the rules with the
+arithmetic checked, forty-two rows in one hour. The two instances that carry the manual's own
+procedure --- six fields and twenty-five minutes each, one on the DOCX template and one on
+the first XLSX template --- are the same two that carried it beforehand, and that count did
+not move. The distinction is recorded in the audit file and hashed into the seal rather than
+left to this paragraph.
+
+The second requirement, the independent second reader, has not been met on any template:
+\emph{zero of three}. It is not a weaker version of the first and cannot be discharged by
+doing more of it. A single reader who transcribed the rules and then checks work derived from
+them is checking their own reading, however carefully; the error class below is precisely the
+one that survives that.
 
 This is the residual no other mechanism reaches, and it is worth being precise about why.
 Schema validation catches shape errors. Cross-checks catch a total that disagrees with its own
@@ -523,14 +542,17 @@ detail. An independent recompute probe --- which exists for the XLSX dataset, re
 written workbooks rather than the case data --- catches transcription and addressing errors,
 and says so in its own documentation. None of them catches a misreading of a rule that the
 generator and the ground truth share, because every number is then wrong together and every
-relation between the numbers still holds. The one spot check performed on the DOCX dataset
-found exactly that class: a per-piece net weight declared in grams where the rules require
-kilograms, whose omission yields sixty thousand instead of sixty and passes all seven
-cross-checks.
+relation between the numbers still holds. The one spot check performed on the DOCX dataset under the manual's
+full procedure found exactly that class: a per-piece net weight declared in grams where the
+rules require kilograms, whose omission yields sixty thousand instead of sixty and passes all
+seven cross-checks. That it was the stronger procedure which found it, on one of the two
+instances that received it, is the argument for the requirement rather than an anecdote
+beside it.
 
 Following this thesis's rule for a gap of this kind, the third route is taken: the requirement
-is kept, the shortfall is reported as a number rather than described as partial, it is carried
-as an open item, and its direction is disclosed in Section~\ref{sec:eval:threats}. That
+is kept at its original strength rather than lowered to what was performed, the shortfall is
+reported as a number rather than described as partial, it is carried as an open item, and its
+direction is disclosed in Section~\ref{sec:eval:threats}. That
 direction is genuinely undetermined rather than conveniently so. All three arms read the same
 rule document and all three see the same calibration instances with their expected outputs, so
 a shared misreading penalizes whichever arm reads the rules correctly, and nothing in the
@@ -559,8 +581,11 @@ oracles preserve the XLSX package while the refusal produces no artifact. The sh
 reports zero problems, all ten oracle cases score cleanly, every success has one actual-output
 cross-check, all three wrong-extent hypotheses discriminate on at least one evaluation case,
 and one material mutation turns each of the eight scoring channels red from a green baseline.
-The remaining item is procedural and deliberately cannot be discharged by those results:
-the signed human audit over all ten cases and the seal made from it do not yet exist.
+The last item was procedural and deliberately could not be discharged by any of those
+results: a signed human audit and the seal made from it. Both were recorded on 30 August
+2026, over all thirty-five of the dataset's stored cases, by the weaker of the two review
+procedures the annotation manual describes --- T12 states which one and why the difference
+is load-bearing.
 
 \paragraph{A sampled evaluation set, and the four things that have to be checkable about it.}
 The last item of that checklist --- the spot check on every instance --- was relaxed on the
@@ -603,19 +628,27 @@ does not, and recovering ``which rule did this one tread on'' costs more work. T
 price of the confidence interval, and it is paid in the currency of debugging rather than of
 statistics.
 
-\paragraph{Status: implementation-backed for the mechanisms; S5 is constructed but not sealed.}
+\paragraph{Status: implementation-backed for the mechanisms; all three datasets sealed, and
+reviewed more weakly than the manual asks.}
 The generators, the two schemas, the per-dataset validators with their negative controls, the
 hypothesis computation and the refusal shape are implemented and are in the repository; every
 count in this subsection was read from the stored manifests and ground truths rather than
 estimated. S5 closes the excluded-member and output-aggregate gaps: it contains blank, note and
 course-shaped pollution rows, and its written total is checked against the sum of written
 course-credit slots. X1's zero cross-check count remains a different, structural case with a
-versioned policy reason. The residual shortfall is the human check itself. Before S5, two of
-twenty-eight stored cases carried recorded spot checks; adding ten pre-seal S5 cases made it
-two of thirty-eight, enlarging X1 to thirty evaluation instances made it two of sixty-three,
-enlarging S5 made it two of eighty-eight, and enlarging S4 settles it at two of one hundred
-and thirteen. The numerator has not moved in any of those recounts, which is the point: the
-denominator is the only thing that grows when a dataset does. Automated workbook-side recomputation is 35/35 on each enlarged dataset but is not
+versioned policy reason. The residual shortfall is the human check itself, and it is now two
+shortfalls rather than one, because two review procedures of different strength are recorded
+in the same field. Through four enlargements the count of instances carrying the manual's own
+procedure --- an independent hand recomputation of listed fields, without opening the expected
+artifacts, measured at about twenty-five minutes each --- did not move: two of twenty-eight
+before S5, two of thirty-eight, two of sixty-three, two of eighty-eight, two of one hundred
+and thirteen. The denominator was the only thing that grew when a dataset did. On 30 August
+2026 a reviewer signed forty-two of those one hundred and thirteen, which is the first time
+the numerator moved at all; but what was signed was a per-case read-through of each ground
+truth against the rule workbook with the arithmetic checked, one hour for all forty-two rows,
+and \emph{the count carrying the stronger procedure is still two}. Both figures are reported
+wherever either is, because quoting the first alone would describe an audit that was not
+performed. Automated workbook-side recomputation is 35/35 on each enlarged dataset but is not
 counted as human review, and it cannot be --- it reads the workbooks that the same reading of
 the rules produced. The bias direction remains undetermined.
 
@@ -1143,9 +1176,14 @@ The expected artifact and the ground truth are produced by one generator. If the
 computes a value wrongly, both are wrong together and the evaluator faithfully reports 100\%.
 Mutation testing establishes that the evaluator detects corruption; it says nothing about
 whether the generator computed correctly. The two do not overlap. The present detection
-mechanism for that residual is a per-dataset spot audit --- at least three fields per dataset
-recomputed by hand from the rule document, including one aggregate and one negative
-obligation --- which is probabilistic rather than a guarantee, and is reported as such.
+mechanism for that residual is a per-dataset spot audit --- at least three evaluation
+instances per dataset, each with fields recomputed by hand from the rule document, including
+one aggregate and one negative obligation --- which is probabilistic rather than a guarantee,
+and is reported as such. The audit performed on 30 August 2026 meets that floor by instance
+count on all three datasets and does not meet it by method on any: it read each ground truth
+against the rules rather than recomputing the fields independently of the expected artifacts.
+T12 carries the distinction, and the audit record carries it too, hashed into the seal so
+that what was done cannot be separated from the claim that something was.
 
 \subsection{A Negative Control for Every Zero}
 \label{sec:eval:negativecontrols}
@@ -1832,7 +1870,8 @@ cannot be falsified by one. It \emph{inherits} T12 rather than adding to it: the
 load-bearing assumption is that synthetic calibration instances resemble real ones closely
 enough, and where they do not the specification is wrong on real data deterministically and
 silently, which is the same shared-misreading class T12 already describes, arriving by a
-different route and covered by the same, largely unperformed, spot audit. It also inherits T8
+different route and covered by the same spot audit, whose method is weaker than the procedure
+it is named for. It also inherits T8
 without improving it, since the arrangement has been exercised on the same three templates as
 everything else. What T16 adds beyond those two is one item they do not cover: this thesis
 constructs no threat model and does not claim that a published specification is free of
@@ -1889,19 +1928,24 @@ of unresolved items must be decomposed before it is interpreted, and a headline
 \label{sec:eval:threats:mixed}
 
 \paragraph{T8 --- dataset scale, at both levels, and they are not interchangeable.}
-Three evaluation templates exist and their content is sealed; \emph{none} of the three has
-passed the human-audit boundary, against an original intention of three to five per carrier.
-Against the relaxed lower bound of three hand-recomputed instances per template, the count is
-one, one and none. Even after all three pass it, three templates support descriptive
-conclusions only: no statistical significance may be claimed, and no single average may be
-taken across carriers.
+Three evaluation templates exist, their content is sealed, and all three passed the
+human-audit boundary on 30 August 2026, against an original intention of three to five per
+carrier. By instance count the relaxed lower bound of three audited evaluation instances per
+template is met on all three --- three, four and thirty --- and by method it is met on none,
+for the reason T12 gives. Passing it does not enlarge what three templates support: they
+support descriptive conclusions only, no statistical significance may be claimed, and no
+single average may be taken across carriers.
 
 % 2026-08-26：加上實例層那一半。原文只談模板數，而頭條指標是案例級的，
-% 分母是 M 不是模板數。數字與成本結構在 TODO M6；M 本身仍未裁定。
+% 分母是 M 不是模板數。
+% 2026-08-30（A16 裁定）：三個分母由 M=5 舊算法的 304／226／225 換成 M=30 evaluator
+% semantic 通道的 2287／1566／1458，出處是凍結檔 benchmark/denominators.json。
+% 舊數字不刪，降格成有名字的歷史值——刪掉會讓前幾輪引用的數字無法解釋，
+% 而那正是 A16 要關掉的缺陷。
 The instance level is a separate limit and it binds a different claim. Field-level accuracy
-rests on a large denominator --- $304$, $226$ and $225$ scored fields on the three templates,
-about $755$ in all --- but the metric this thesis leads with, the silent-failure rate, is a
-proportion over \emph{cases}, and each template contributes $M$ evaluation cases of which one
+rests on a large denominator --- $2287$, $1566$ and $1458$ scored fields on the three
+templates, $5311$ in all --- but the metric this thesis leads with, the silent-failure rate,
+is a proportion over \emph{cases}, and each template contributes $M$ evaluation cases of which one
 or two are refusals. A result of zero silent failures on a template carries a one-sided $95\%$
 upper bound of roughly $45\%$ on the true rate at $M=5$, falling to about $10\%$ at $M=30$;
 and because Section~\ref{sec:eval:channels} forbids averaging a rate across carriers, it is
@@ -1910,17 +1954,23 @@ is why $M$ was raised to $30$. \textbf{All three datasets have now reached it} -
 26 August 2026, S5 on 28 August and S4 on 29 August --- so the $10\%$ bound applies to every
 template in the main table and the $45\%$ bound applies to none of them.
 
-The three field-level figures above were measured over five instances per template and are
-therefore all roughly seven times smaller than the current counts: S4's scored-field count
-over its thirty evaluation instances is $2287$ against $306$ over the original five, and
-S5's is $1458$ against $234$. They are also the smaller of two counts of the same quantity
-that disagree by two, six and nine fields, and neither counting method was written down, so
-this thesis reports the figure it has always reported and records the discrepancy as an open
-item rather than substituting a number whose predecessor cannot be reconstructed. That
-choice was defensible while it concerned one dataset and is becoming less so now that it
-concerns three: the denominator of the headline field-level accuracy has two candidate
-values and no adjudicator, and it must be settled before Section~\ref{sec:eval:results} is
-filled in, not while filling it in.
+Those three figures replaced a smaller set, and the substitution is recorded here rather
+than made silently, because earlier drafts of this thesis cited the smaller set. Two
+different counts of ``the field-level denominator'' were in use and neither had been written
+down: a hand count of what a ground truth \emph{contains} --- the lengths of its value list
+plus the cells of its slot rows, obligations excluded --- which gave $304$, $226$ and $225$
+over the five instances per template then available; and the total of the evaluator's frozen
+\texttt{semantic} channel, which gave $306$, $232$ and $234$ over the same five. Both are
+now executable code, and the older one reproduces to the digit. The difference between them
+is obligations and the channel the frozen scoring policy routes each one to: X1's six all
+land in \texttt{semantic}, so $226+6$ is exactly $232$, while S4 and S5 route some of theirs
+elsewhere. The second count is the one reported above, for a reason that is not a matter of
+taste: it counts the checks an arm is scored on, and any accuracy this thesis reports is a
+fraction of that, whereas the first counts entries in a file. The figures are taken from a
+frozen record regenerated by a single command and compared against a live recount by a test,
+so that Section~\ref{sec:eval:results} cites one artifact rather than a number in a log.
+Aligning the two counts does not make either correct: which positions \emph{ought} to be
+scored is the annotation manifest's judgement, and that is T12.
 
 Raising $M$ does nothing for external validity, which is bounded by the template count above
 and by the fact that instances of one template are repeated draws from one rule document and
@@ -1953,20 +2003,33 @@ Section~\ref{sec:eval:ablation} is the instrument for this and has not been run;
 no claim in this thesis is established as vendor-independent.
 
 \paragraph{T12 --- the correctness of the reference outputs.}
-Discussed in Section~\ref{sec:eval:selfvalidation}. Mutation testing bounds the evaluator, not
-the generator; the residual is covered only by a spot audit, and the audit has largely not
-been performed. Counted across the one hundred and thirteen stored instances of the four
-datasets, every ground truth records its reviewer as pending, and exactly two instances ---
-one each on two of the three main datasets --- carry the hand recomputation the annotation
-procedure requires. The relaxed lower bound decided alongside $M$ asks for three instances
-per template rather than all of them, and against that bound the count is one of three for
-S4, one of three for X1 and none of three for S5; worksheets naming the instances, the fields
-and the hand calculation now exist for all three datasets and are unsigned, which is the only
-part of this that could be prepared mechanically.
+Discussed in Section~\ref{sec:eval:selfvalidation}. Mutation testing bounds the evaluator,
+not the generator; the residual is covered only by a spot audit. That audit was signed on
+30 August 2026, and \emph{what was signed is weaker than the procedure it discharges}, so
+this paragraph states both.
+
+The annotation manual asks for an independent hand recomputation of the listed fields from
+the rule workbook, without opening the expected artifacts, measured at roughly twenty-five
+minutes for one instance. What was performed was a per-case read-through of each ground
+truth against the rules with the arithmetic checked: forty-two rows across the three
+datasets in one hour, about a minute and a half a row. Counted across the one hundred and
+thirteen stored instances of the four datasets, forty-two now record a named reviewer, and
+\emph{two} carry the stronger recomputation --- the same two that carried it before the
+audit, one each on two of the three main datasets. The relaxed lower bound decided alongside
+$M$ asks for three evaluation instances per template rather than all of them; by instance
+count it is met everywhere (three for S4, four for X1, thirty for S5) and by method it is met
+nowhere. The difference is written into each audit record as a \texttt{review\_method} field
+and hashed into the seal digest alongside the verdicts, so a reader who obtains the record
+obtains the method with it and cannot recover one without the other. Recording the weaker
+procedure accurately is not a formality: an audit record that overstated what was done would
+defeat the only thing this gate exists to establish.
 
 Enlarging all three datasets to thirty put a number on what the relaxation costs. Four
 audited instances would have covered four fifths of a five-instance set; they cover an eighth
-of a thirty-instance one. Raising $M$ and weakening its countermeasure were two halves of one
+of a thirty-instance one. As signed, the reviewed fraction of each evaluation set is a tenth
+for S4, a seventh for X1 and all of S5 --- and the last of those three is not the reassurance
+it looks like, because thirty cases reviewed at a minute and a half each is a different
+instrument from three reviewed at twenty-five. Raising $M$ and weakening its countermeasure were two halves of one
 decision, and this is the exchange rate between them. Seventy-five of the one hundred and
 thirteen instances now in the repository were produced by a draw rather than written by hand,
 so the residual is also less evenly distributed than the fraction suggests: nobody chose what

@@ -499,8 +499,9 @@ of those escapes.
   \item[C5 --- the cost-aware evaluation method and datasets.] A three-arm protocol with
     material and tooling parity, a deterministic evaluator with separate channels and no model
     in the scoring loop, silent failure as an explicit outcome class, an externally supplied
-    coverage denominator, and two datasets built from genuine third-party forms. This is what
-    stops C4 from being a claim nobody can measure. Developed in Chapter~\ref{ch:evaluation}.
+    coverage denominator, and three datasets built from genuine third-party forms. This is
+    what stops C4 from being a claim nobody can measure. Developed in
+    Chapter~\ref{ch:evaluation}.
 \end{description}
 
 \paragraph{A correction to the contribution table this thesis inherited.}
@@ -541,9 +542,13 @@ tests reach it. It is therefore presented as a designed and tested mechanism who
 integration is future work, and no measured result may be attributed to it
 (Section~\ref{sec:der:repair}).
 
-C5's protocol, evaluator, scoring policy, coverage denominator and both datasets exist and are
-frozen; the live adapters for two of the three arms do not, and no arm has been scored under
-the protocol. C5 is thus a contributed \emph{method}, not yet a contributed result.
+C5's protocol, evaluator, scoring policy, coverage denominator and all three datasets exist
+and are frozen, their content sealed and their reference outputs reviewed by a person to the
+limited extent T12 records. The live adapters for all three arms exist and have driven every
+arm and phase of the harness through one paid rehearsal, but \emph{no arm has been scored
+under the protocol}: the formal run has not been performed, and that --- not any missing
+mechanism --- is what stands between this chapter and a result. C5 is thus a contributed
+\emph{method}, not yet a contributed result.
 
 \section{Claims and Where They Are Tested}
 \label{sec:intro:claims}
