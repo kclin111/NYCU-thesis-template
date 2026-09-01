@@ -1669,6 +1669,16 @@ are the subject of T19. One, none and one are residue from a known limitation of
 derivation-time oracle, and belong to neither. Three classes inside one integer is why the
 integer may not be quoted.
 
+% 2026-09-04：這一段是 T19 那次更正的正面結果，放在這裡是因為它是一個可以報的數字。
+One number the itemised list does not give directly is how often the compiled arm read a rule
+and honestly declined to implement it, since a declined rule whose declared roles do not match
+the frozen manifest is filed as a rule nobody mentioned. Recovered from the stored derivation
+records, the fourth and fifth batches declined nine rules across their six replicates while the
+blocking lists name six. That gap is not noise about which rules are hard; it is the same
+attribution predicate as T19, seen from the side that matters most to this thesis, because a
+system that refuses to fabricate a check it cannot express is exhibiting the behaviour the
+silent-failure metric is meant to reward.
+
 \paragraph{An honest specification produced a worse document than a dishonest one.}
 % 2026-09-03：這一段是上一輪最貴的一個發現，而它是 gate 那一段的直接後果。
 Between the third and the fourth batch a derivation-time gate was added that refuses a
@@ -2135,10 +2145,29 @@ specification's stored evidence, the arms have already been scored against it, a
 frozen denominator after seeing results is the thing the methodology freeze exists to prevent; a
 corrected manifest would be a re-declared campaign. What has been corrected is the record: the
 validator now stores, on each discarded assignment, the disposition and the reason the agent
-gave and the category the manifest assigned. That does not recover the past. For the discarded
-assignments of the campaign already run, what the agent decided about those rules is not
-recoverable from anything stored, so a count of how often the system honestly refused a rule
-cannot be given for them, and this thesis does not give one.
+gave and the category the manifest assigned.
+
+% 2026-09-04 更正：這一段先前寫「復原不出來，所以本論文不給那個數字」，而那是錯的。
+% 錯的來源是查證時查了 evidence 的頂層，而那份宣告存在 agent_analysis 底下一層。
+An earlier version of this passage went further and said that for the campaign already run what
+the agent decided about a discarded rule was not recoverable, so a count of honest refusals
+could not be given. That was wrong, and the way it was wrong is the more useful half. The
+validator does discard the disposition; nothing else does. Each derivation persists the agent's
+entire reply alongside the scored summary, one key below where the check had looked, and it has
+done so since well before the first of these batches. Recomputing from that record reproduces
+the stored coverage partition rule by rule and the recorded blocking list item by item, so the
+classification can be read rather than inferred.
+
+Read that way, the two batches whose specification records survive declared nine honest
+refusals across six replicates; the blocking lists report six. The other three were reclassified
+as rules nobody mentioned, purely because the roles the assignment named did not equal the
+manifest's set --- and in each case the roles the agent named were the ones whose template
+actually contains the label. The same rule is reported as an honest refusal in one replicate and
+as an omission in another, from an identical disposition. A count of how often this system
+honestly refused a rule is therefore given, and it is the larger of the two: what the release
+gate reports understates it by a third. The boundary is narrower than the earlier claim and
+worth stating exactly --- a batch whose specification rows were deleted without first exporting
+them is genuinely unreadable, and one such batch exists.
 
 \paragraph{T18 --- the compiled arm's derivation sees one calibration instance, and the
 envelope declares three.}
@@ -2183,6 +2212,42 @@ cells that a repeat block writes correctly, admitted to the gate's input list be
 author-time oracle reads expected text from that same list for a different purpose. Any count
 of unresolved items must be decomposed before it is interpreted, and a headline
 ``unpublishable'' figure without that decomposition would understate the method.
+
+\paragraph{T20 --- an expressible construct the derivation did not use, and denied existed.}
+% 2026-09-04 新增（E20，使用者裁定走 §3 第 2 條出路＋第 3 條揭露）。
+% 對本方法不利：能力在系統裡，而報出來的拒絕通道與欄位級都當它不在。
+The specification language can state the refusal condition of the DOCX dataset's carton-range
+rule. A row set may declare an interval predicate over two of its own ordinal columns, a
+violation stops the run, and injecting that one declaration into an already-derived
+specification moves exactly the two evaluation instances it should and leaves the other
+twenty-eight untouched. The construct is documented in the derivation prompt, and the prompt's
+hash is pinned byte for byte inside every derivation envelope of the batch discussed here.
+
+Three independent cold-start derivations nonetheless declared that rule rejected, and all three
+gave as their reason that no cross-row validation primitive exists. The reason is false. None of
+the three declared the construct; none declared the sibling construct for repeat-block row
+alignment either.
+
+This is recorded as a boundary of the derivation, not of the language, and the distinction is
+the point. Adding expressiveness, writing it into the prompt, and adding a derivation-time check
+that the agent answered are three separate things, and this thesis has now measured all three
+combinations: with the check present and reachable the capability was used on the next batch;
+with the check present but structurally unreachable for the shapes the agents produce, it never
+fired; with no such check at all, the capability went unused and its absence was asserted. What
+generalises is the last clause rather than the particular rule: \emph{a capability the system
+has, that the prompt describes, and that nothing checks for, is indistinguishable at the
+specification level from a capability the system lacks} --- including to the agent writing the
+specification.
+
+The direction runs against the proposed method twice over. The refusal channel for that dataset
+is reported at six of twelve when the language could express eight, and the two undetected
+instances are counted as silent failures, which is this thesis's primary metric. No claim is
+made that a different prompt, model, or number of replicates would behave the same way; that
+separation needs a re-declared campaign and was not bought. One observation constrains the
+obvious next attempt: the paragraph introducing the construct offers, two sentences later, an
+explicit instruction to record a refusal rule as rejected when the language cannot serve it.
+The agents took that exit while denying the three lines above it, so ``the description was
+unclear'' is not the only hypothesis the wording supports.
 
 \subsection{Threats of Undetermined or Mixed Direction}
 \label{sec:eval:threats:mixed}
@@ -2364,7 +2429,7 @@ cost structure \emph{because} the baseline was accurate, not because the tasks w
 harder.
 
 \paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15,
-T17, T18, T19; normative for T3, T4, T8, T11, T13, T16.}
+T17, T18, T19, T20; normative for T3, T4, T8, T11, T13, T16.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
