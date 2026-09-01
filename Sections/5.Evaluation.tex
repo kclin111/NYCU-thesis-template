@@ -1634,6 +1634,71 @@ more output across a longer exchange and a multi-turn session reads its own outp
 sentence of the form ``the reused-skill arm is cheaper because it sees less'' is unsupported and
 is not made in this thesis.
 
+\paragraph{The compiled arm's derivations, and the one number that may not be quoted
+from them.}
+% 2026-09-03 新增（E15／E16b／E18）。這一段的存在理由不是報數字，是**訂下 Arm C 那一欄
+% 的引用規則**，而它必須先於主表存在——主表一旦寫出來，讀者會直接把 publishable 當成
+% 一個比例去讀。權威是逐項的 blocking 清單，不是那個布林值，也不是逐 kind 的計數。
+Four batches of $D=3$ derivations have been paid for on S4, each under a named declaration and
+each on a different revision of the product, so they are four conditions rather than four
+repeats of one. What they establish is not a proportion. It is that this system's own release
+gate would have refused every specification it produced --- and that the specifications were
+frozen and executed anyway.
+
+That was a deliberate choice and the reason is not that it keeps more data. A run that ignores
+the gate is the gate's negative control. Enforcing it alone leaves the compiled arm's column
+empty and a serene zero beside it; bypassing it alone produces a number describing a system this
+thesis does not propose, because the review step \emph{is} the ``once'' in compile-once. Neither
+run is the result; the difference between them is what measures C3, and it exists only because
+both ran at one frozen configuration. Every attempt therefore records the gate's verdict
+\emph{before} the specification is frozen, and the evaluator reports the two populations apart.
+
+The verdict must not be reported as its boolean. That boolean is one value over twelve
+heterogeneous item kinds answering different questions: for the gate's own question --- should a
+person look at this --- merging them is correct, since every kind means yes; for the question
+this section asks --- what kind of thing blocked it --- the same merge is wrong. Recounting the
+fourth batch's itemised lists gives $18$, $14$ and $19$ items, which resolve into $15$, $12$ and
+$16$ distinct events in three classes. Eleven, ten and twelve are defects of the specification
+itself, which is the compiled arm's review working: two of them are the gate that fires when a
+rule supplies a name nothing consumes, and it fired on exactly the two fields that had been
+silently wrong in the previous batch. Three, two and three are artifacts of role attribution and
+are the subject of T19. One, none and one are residue from a known limitation of the
+derivation-time oracle, and belong to neither. Three classes inside one integer is why the
+integer may not be quoted.
+
+\paragraph{An honest specification produced a worse document than a dishonest one.}
+% 2026-09-03：這一段是上一輪最貴的一個發現，而它是 gate 那一段的直接後果。
+Between the third and the fourth batch a derivation-time gate was added that refuses a
+specification supplying a source name no field or formula reads. In the fourth batch it fired,
+correctly, on the two fields the third batch had filled in wrongly, and the agents responded by
+declaring both unresolved rather than implementing them. Field-level accuracy fell, from
+$3814$ of $3955$ to $3776$ of $3955$, and the difference of $38$ is exactly the number of times
+the one field it stopped writing is scored. All-or-nothing accuracy was zero of $44$ in both.
+
+A specification can diagnose itself correctly, say so in its own record, be correctly refused by
+the release gate --- and, so long as nothing asks that gate, produce a worse document than a
+specification that lied. This is the single strongest reason the compiled arm's field-level
+column may not be reported alone.
+
+\paragraph{The refusal channel, and a refusal that was right for the wrong reason.}
+% 2026-09-03（E10）。§3 第 1 條出路已執行，而 campaign 的那六格仍然是結果的一部分。
+S4 declares eight instances whose correct behaviour is to produce nothing. In every executed
+batch the compiled arm refused six of them and produced documents for the other two, and those
+two documents are silent failures of the kind this thesis measures: a packing list whose carton
+intervals overlap or skip, every individual value legal. The specifications were not lying about
+it. Each recorded the governing rule as \emph{rejected} and gave the reason --- that the
+specification language had no primitive for a predicate over intervals in adjacent rows --- and
+that statement was true when it was written.
+
+What makes this worth a paragraph rather than a footnote is how it stayed invisible. Both
+instances \emph{were} refused for months, by an unrelated defect that rejected an empty labelled
+cell; the refusal was right and its reason was wrong, and repairing the reason converted two
+correct refusals into two silent failures without turning a single test red. The missing
+primitive has since been built (ADR~0013) and its acceptance measurement is two-ended: over the
+thirty evaluation instances the acceptance split moves from $24$/$6$ to $22$/$8$, and exactly the
+two instances move. No derivation has yet been run with it available, so nothing here is claimed
+about whether a derivation would use it; T4 records the primitive's own evidential weakness.
+
 \paragraph{The reporting shape, unchanged.}
 One row per evaluation template with no average across templates, because carriers may not be
 pooled into a single accuracy; the per-channel denominators of Section~\ref{sec:eval:metrics}
@@ -1979,6 +2044,17 @@ the DOCX dataset has the same property: a survey of six real government forms fo
 instance of the shape. The failure mode this predicts is not a red test but a different form
 that silently does not fit, and no measurement in this thesis would detect it.
 
+% 2026-09-03：第五筆。它與前四筆不同的地方是那個「第二份產物」的假設被**查證推翻**了，
+% 而不是沒有查——那句話比「未查證」強，也比它難堪，所以要寫進去。
+The interval-sequence predicate of ADR~0013 is the fifth, and its case is worse than
+unexamined. The standing hypothesis for a second instance of the shape was the chainage
+intervals of the engineering form family, and searching all three frozen rule sets for an
+interval, overlap or contiguity predicate found one rule in one of them and none in the other
+two --- the engineering family in this study is an audit report, in which chainage does not
+appear at all. The primitive was built anyway, because the alternative was to leave a measured
+silent failure in the one carrier that exhibits it; but it rests on a single rule in a single
+dataset and this paragraph is the record of that.
+
 \subsection{Threats Biased Against the Proposed Method}
 \label{sec:eval:threats:unfavourable}
 
@@ -2000,6 +2076,36 @@ of 5. Narrowing the channel to fit the writer was considered and rejected, becau
 have been a reduction of the thesis claim to match the implementation. The threat is recorded
 rather than deleted, because every integrity figure produced before that correction is an
 artifact of the writer and not a result.
+
+\paragraph{T19 --- the coverage denominator answers one question and is read as another,
+and what the agent decided is not always recoverable.}
+% 2026-09-03 新增（E18／E19）。它放在「對本方法不利」這一節，因為兩個方向都不利：
+% 它同時抬高阻擋項計數並壓低覆蓋率分子。
+The frozen applicability manifest gives every rule a set of document roles, and that field is
+written from the rule document's own category column: a consistency rule and a refusal rule
+carry every role they \emph{govern}, since a refusal forbids producing any of the documents. The
+scorer reads the same field as a different statement --- that each of those roles must contain a
+name implementing the rule --- and for four of the DOCX dataset's thirty-four rules the two
+readings differ. Three of the four cannot be satisfied under the scorer's reading at all: the
+labels those rules name occur in only one of the two templates, verified over every package part
+of both, so no assignment naming both roles could point anywhere.
+
+The effect is measurable and systematic rather than incidental. Across the fourth batch's three
+replicates, every rule that fell into the unattributed bucket had in fact been given a
+well-formed disposition and discarded by this predicate; \emph{no rule was omitted by any
+agent}. Two rules were discarded in three replicates of three. The consequence runs against the
+method in both directions at once: the discarded assignments inflate the count of items blocking
+release, and they deflate the coverage numerator that Section~\ref{sec:eval:coverage} reports.
+
+The manifest is not corrected. Its bytes and its canonical hash are pinned inside every
+specification's stored evidence, the arms have already been scored against it, and rewriting a
+frozen denominator after seeing results is the thing the methodology freeze exists to prevent; a
+corrected manifest would be a re-declared campaign. What has been corrected is the record: the
+validator now stores, on each discarded assignment, the disposition and the reason the agent
+gave and the category the manifest assigned. That does not recover the past. For the discarded
+assignments of the campaign already run, what the agent decided about those rules is not
+recoverable from anything stored, so a count of how often the system honestly refused a rule
+cannot be given for them, and this thesis does not give one.
 
 \paragraph{T18 --- the compiled arm's derivation sees one calibration instance, and the
 envelope declares three.}
@@ -2225,7 +2331,7 @@ cost structure \emph{because} the baseline was accurate, not because the tasks w
 harder.
 
 \paragraph{Status: implementation-backed for T1, T2, T5, T6, T7, T9, T10, T12, T14, T15,
-T17, T18; normative for T3, T4, T8, T11, T13, T16.}
+T17, T18, T19; normative for T3, T4, T8, T11, T13, T16.}
 The items marked implementation-backed each name a measurement in this repository. The others
 are stated positions or unrun experiments, and are labelled so that no reader takes an
 intention for a result.
