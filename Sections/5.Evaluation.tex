@@ -1859,12 +1859,48 @@ derivations omitted the declaration.
 What that leaves is a statement about the derivation loop rather than about the language, and it
 sharpens the three-part claim made earlier in this section. The gate in question exists, is
 reachable, fires --- three times per replicate, at the right addresses --- and its message names
-the offending identifier, quotes the whole expression, and states the repair, which is to give the
-name a source locator or stop referencing it. The repair is also structurally available: the
-repair loop accepts field declarations, unlike the rule-assignment case discussed under T20. All
-four conditions held, and none of the three repair rounds performed it. \textbf{A check that
-exists, is reachable, fires, and points at an available repair is still four things away from that
-repair being made.}
+the offending identifier, quotes the whole expression, and states the repair. Whether that repair
+was \emph{available} to the loop was then measured rather than inferred, and the answer first
+written down here was wrong. The message offers two repairs: bind the name a source locator in
+the rules, or stop referencing it. The first is not reachable. The rules live in a mapping the
+repair application function does not take as an argument at all; the repair request sent to the
+model does not carry that mapping among its six payload keys, so the round cannot see the half
+of the specification it is being told to edit; and the function refuses both substitutes
+outright --- a proposal that introduces a field is rejected as one a specification may only grow
+through a derivation, and a proposal that attaches a locator to an existing field is rejected
+because where a value is read from stays frozen. That is the same structural position as the
+rule-assignment case under T20, not a contrast with it. The second repair is reachable, because
+a transform belongs to the value layer. \textbf{So the only repair the loop could have made is
+the one that removes the reference, and a specification that stops reading a value it needs
+writes a document that is wrong rather than one that is right.} None of the three rounds made
+even that one.
+
+\paragraph{What the missing declarations were worth --- a diagnostic, not a result.}
+The head-room was priced before deciding whether to pay for a further derivation campaign, by
+hand-writing the declarations the three derivations did not write and running the frozen
+specifications over the same thirty evaluation instances, through the same three production
+stages and the same evaluator. The figures below are a diagnostic and appear in no results
+table: the declarations were written by someone who had already seen the reference outputs,
+which is adjacent to the second of this thesis's own red lines, so each figure is stated
+together with what was hand-written. The reference outputs themselves were not touched, and
+the specifications were read from the frozen resources those fifty executions bound, verified
+against their freeze digests, rather than from the database.
+
+All three replicates behave identically. As frozen they produce no documents and score zero of
+the 1566 semantic checks. With the two header transforms rewritten to stop naming the
+unsupplied inputs --- the only repair the loop could have taken, applied through the product's
+own repair function --- they produce twenty-three documents and 1507 of 1566, and all
+twenty-three are silent failures. With three hand-written intermediate inputs instead, one per
+name the gate reported, the validator returns no errors at all and the same twenty-three
+documents score 1553 of 1566, nine of them silent failures. The thirteen wrong cells that
+remain are a single column, and closing it is priced under T18 rather than here. Three things
+follow. The distance between a specification that writes nothing and one that writes almost
+everything is three declarations of a construct the language already had. The repair the loop
+was permitted to make would have produced documents, but would have turned a loud failure into
+twenty-three silent ones --- so on this template the unreachable repair and the reachable one
+differ in the direction this thesis measures. And neither figure says a derivation would ever
+write those declarations, which is the standing lesson of this section and is not settled by
+hand-writing them.
 
 \paragraph{The reporting shape, unchanged.}
 One row per evaluation template with no average across templates, because carriers may not be
@@ -2378,6 +2414,19 @@ The disclosure exists because the discrepancy was found before the first Arm~C d
 paid for, by enumerating what the envelope declares against what the product reads, and
 because it runs in the unusual direction: most gaps of this kind, as
 Section~\ref{sec:eval:threats} notes elsewhere, lean the other way.
+
+One direction of it is now priced, on one dataset, by hand, and the price is against the method.
+The thirteen semantic errors left over in the X1 head-room diagnostic reported earlier in this
+section are a single column, the per-project remark, which all three derivations recorded as
+unresolved with the cause ``target not found'' and the reason that the column is blank in every
+row of the instance they were shown --- so its cell never appears in the baseline-to-expected
+difference a derivation reads, and the prompt forbids constructing an address it has not seen.
+That reason is true of the instance consumed and false of the set authorised: the cell is
+non-blank in exactly one of the three calibration instances, and it is not the one the
+derivation reads. Hand-writing that one column closes all thirteen remaining semantic errors
+and takes the nine silent failures to zero. One calibration instance out of three is therefore
+worth, on this template, thirteen scored cells and nine of twenty-three documents --- and the
+refusal that stood in its place was honest, and correct about what the derivation could see.
 
 \paragraph{T6 --- the DOCX write path has not had the same audit.}
 The correction in T5 covers XLSX only. The layout-bearing parts of a Word package have not
