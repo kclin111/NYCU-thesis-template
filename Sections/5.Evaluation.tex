@@ -1742,6 +1742,46 @@ thirty evaluation instances the acceptance split moves from $24$/$6$ to $22$/$8$
 two instances move. No derivation has yet been run with it available, so nothing here is claimed
 about whether a derivation would use it; T4 records the primitive's own evidential weakness.
 
+\paragraph{The second template, and a refusal channel that rewards a broken specification.}
+% 2026-09-05：S5 的 Arm C 第一次推導（D=3）。X1 仍然是 0 次，理由是 T1 的量化那一段。
+The compiled arm was then derived three times on the spreadsheet template S5, which until that
+point had never been derived at all. The result reverses the reporting problem of the preceding
+paragraph rather than repeating it. One replicate produced a specification the validator passed
+and executed on every instance, producing fifty documents; it declares no refusal anywhere, so
+the four instances that must produce nothing produced a document each, and its refusal channel is
+zero of four. The other two replicates produced specifications with three fields missing a
+required transform, so the compiler refused \emph{every} instance, produced nothing at all, and
+scored \textbf{four of four} on the same channel --- the four correct outcomes being the four
+instances whose correct behaviour is refusal.
+
+So a specification that cannot execute earns a perfect refusal channel, and the failing replicate
+looks better on that axis than the working one. The rule this fixes is a citation rule and not a
+mechanism: \textbf{the refusal channel is never reported without the number of documents that
+replicate produced.} It is the mirror of the defect above --- there, repairing a wrong reason
+turned two correct refusals into silent failures; here, breaking a specification turns silent
+failures into correct refusals --- and in both directions no test changes colour.
+
+The two templates also fail in shapes that a single accuracy column would flatten into one. On
+S4 the specification wrote the wrong thing while asserting it could not express the rule, and
+field-level accuracy stayed above ninety-five percent with every failure inside one field group.
+On S5 the specification \emph{honestly refused} most of the rule set --- seventeen, fourteen and
+fourteen of nineteen rules recorded as rejected --- and field-level accuracy is $282$ of $1458$.
+Both templates score full marks on package integrity and on cells that must not be touched,
+which is the same sentence in both cases: the deterministic compiler did what the specification
+said, exactly. What differed is what it was told. Those two channels are, for that reason, close
+to free for a specification that writes almost nothing, and must not be reported alone.
+
+Two further reporting consequences follow from that batch. First, the undercount of honest
+refusals described under T19 is a property of a manifest with more than one document role, not of
+the scorer: recomputed over S5's three replicates, forty-five declared refusals are reported as
+forty-five, with no reclassification, against nine reported as six on S4. Second, the residual
+category into which unexplained expected-text changes are placed held one item per replicate on
+S4 and between forty-seven and fifty on S5, where item-by-item it is three distinguishable
+populations --- cells the expected output fills and the specification does not write, cells the
+template ships with sample content that a correct output must clear, and unused grid slots blank
+on both sides. The first two are the arm's own coverage gap, so reporting the whole category as a
+measurement residue would understate it, in the direction that favours the proposed method.
+
 \paragraph{The reporting shape, unchanged.}
 One row per evaluation template with no average across templates, because carriers may not be
 pooled into a single accuracy; the per-channel denominators of Section~\ref{sec:eval:metrics}
