@@ -2009,9 +2009,40 @@ The template-level separation described in Section~\ref{sec:eval:split} does not
 development templates the protocol proposes were never built, and the prompts, gates, and
 intermediate representation were tuned against the calibration instances of the evaluation
 templates themselves. Three representation primitives exist specifically because the compiled
-arm could not otherwise produce X1. The bias favours Arm C, and it is not quantified --- the
-only way to quantify it is to build the missing development templates. The two bounding
+arm could not otherwise produce X1. The bias favours Arm C. The two bounding
 measurements are given in Section~\ref{sec:eval:split}.
+
+An earlier version of this paragraph added that the bias ``is not quantified --- the only way
+to quantify it is to build the missing development templates''. The second clause is false for
+the sharpest form of the threat, and the correction is worth more than the original claim. Whether
+an address named in a prompt is an address a correct output must write is decidable from the
+template and its expected output alone: it is in the baseline-to-expected diff or it is not. So
+the leak can be counted without building anything. Counted over the frozen derivation prompt
+(1184 lines, whose SHA-256 is sealed into every \texttt{C/derivation} envelope), which names
+nine concrete target references and five slot-indexed target templates: six of them are
+references S4's own output must write, three are X1's, and none is S5's. The prompt additionally
+names both of the X1 cells that a refusal rule requires to be left \emph{blank} --- which by
+construction can never appear in a baseline-to-expected diff and are therefore not in those
+counts --- and states X1's slot count, slot origin, record group size and row-role names, and
+S4's slot count, in prose and in a worked JSON example that is otherwise identical to what all
+four stored X1 specifications wrote. The addresses entered the prompt in the same commit that
+built the X1 dataset, downstream of X1's own pilot derivations.
+
+Three things follow, and the third is the one that fixes the bias direction. First, this is the
+same prohibition as the one on rule tables --- no target cell address, bookmark, or content
+control tag, because a target must be derived and not given --- displaced into the other
+artifact the deriving agent reads; the rule workbooks obey it, and so do all three ground-truth
+records, in which the count of target references is zero. Second, the count is a lower bound:
+the slot geometry and the column headers are answers too, and are not address-shaped, so nothing
+counts them. Third, the asymmetry: the Arm~A and Arm~B prompts are twenty-eight and twenty-nine
+lines and name no address whatsoever, so this is help the compiled arm receives and the baselines
+do not. What remains genuinely unquantified is what the help was \emph{worth} --- an agent may
+have found those addresses unaided --- and separating that from the leak needs a derivation under
+a prompt with the addresses removed, which is a further declaration and a further authorisation.
+S5's zero is why its Arm~C batch was run before X1's: it is the one compiled-arm derivation in
+this campaign whose prompt carries none of its own answer. It bounds only the address leak. S5
+remains subject to the rest of this paragraph and to T3, so it is a partial bound and not a clean
+control.
 
 \paragraph{T2 --- the cell-datatype exemption.}
 The compiler stringifies every value before writing it, so a numeric field lands in a
