@@ -1792,6 +1792,80 @@ repeat block at all, so every one of the fifty is unexplained and blocks. What s
 templates here is therefore whether a repeat block was declared, and the population split is
 computed over the subset that actually blocks.
 
+\paragraph{The third template, and a specification that claims almost everything and executes nothing.}
+% 2026-09-05 稍晚：X1 的 Arm C 第一次推導（D=3）。三份主模板因此都有 Arm C 資料。
+The compiled arm was finally derived three times on X1, the remaining spreadsheet template, which
+completes the compiled column of the main table. All three derivations succeeded, all three
+produced a specification the validator rejected, and \textbf{all one hundred and fifty executions
+failed, producing no document at all}. Field-level accuracy is therefore nought of the frozen
+denominator of $1566$.
+
+Two properties of that batch matter more than the number. The first is that the three replicates
+are not merely similar but identical: instance by instance, all fifty runs return the same failure
+code under all three specifications --- thirty-five with an unresolvable formula input, eight with
+a declared-versus-resolved collection count mismatch, seven with an unmatched record in a row-set
+merge. Nothing like it appears elsewhere in the campaign, where S4's replicates differ in how many
+documents they produce and S5's differ in whether the specification validates at all. Three
+independent cold-start derivations, into three separate and demonstrably empty datasets, behaved
+the same way on every evaluation instance. That is a dispersion measurement in the direction that
+favours the proposed method, and it is also the least useful kind of agreement available: the
+three specifications agree in being unable to do anything.
+
+The second is that this template makes the refusal-channel rule of the preceding paragraph
+stricter rather than merely confirming it. On S5 the perfect refusal channel was obviously free,
+because every instance failed identically and a reader could see it at a glance. On X1 it is not.
+The seven instances whose correct behaviour is refusal each fail with a code that \emph{is}
+semantically the designed refusal condition: the four whose dispatch register declares one more
+attached audit sheet than is present fail on the collection count, and the three whose project
+register lists one more project than received an audit sheet fail on the unmatched record. Checked
+case by case against the ground-truth refusal codes, the mapping is exact. The refusal channel is
+seven of seven and every reason is right --- and it still establishes nothing, because the same
+specification also refuses the twenty-three instances that should have produced a document, only
+with a different code. \textbf{A system that fails on every instance can look correct on the
+refusal cases, and can be correct there for the right reason.} The citation rule therefore grows a
+clause: the refusal channel is reported with the number of documents produced \emph{and} with the
+outcome distribution over the instances that should have succeeded.
+
+Producing nothing also collapses the denominators, and that is a measurement hazard of the same
+family as the field-count denominator of Section~\ref{sec:eval:metrics}. With no artifact to
+inspect, the scorer reports nought of nought on semantic, extent, presentation, cross-check,
+integrity and untouched alike; only the refusal and structure channels have a denominator at all.
+Confirmed against S5's second replicate, which also produced nothing and reports the same way, so
+this is general and not a property of X1. An accuracy quoted from those figures would be an
+undefined ratio that reads as an absence of errors, so every compiled-arm accuracy in this chapter
+is quoted against the frozen denominator file instead. The same collapse retires the free full
+marks noted above: on this batch, package integrity and untouched cells are not full marks but
+nought of nought.
+
+Read beside the other two templates, X1 settles the shape of the main table. The three
+specifications fail in three mechanisms that no single column can express: on S4 one lied about
+what it could express and wrote the wrong thing anyway; on S5 one honestly refused most of the
+rule set; on X1 all three claimed to cover almost all of it --- twenty-four of twenty-seven rules
+covered, none rejected --- and were structurally unable to execute. \textbf{And on the metric this
+thesis treats as central, X1 is the best of the three: it produced no silent failures at all,
+against forty-four of forty-four on S4 and thirty of thirty on S5.} That is not quality. A
+specification that writes nothing cannot fail silently, so the silent-failure rate is reported
+with the number of documents produced, for exactly the reason the refusal channel is.
+
+The cause is a derivation defect and not a gap in the representation, and the distinction was
+checked rather than assumed. All three specifications compute the report's two header fields from
+a formula that reads three or four names, and none of them declares anything that produces those
+names, so the validator raises an unproduced-formula-input error three times per replicate and the
+compiler refuses at run time. A pilot specification derived on the same template in August wrote
+the same two fields correctly, using a formula string identical word for word, because it also
+declared sibling fields that supplied those names. The language expresses it; these three
+derivations omitted the declaration.
+
+What that leaves is a statement about the derivation loop rather than about the language, and it
+sharpens the three-part claim made earlier in this section. The gate in question exists, is
+reachable, fires --- three times per replicate, at the right addresses --- and its message names
+the offending identifier, quotes the whole expression, and states the repair, which is to give the
+name a source locator or stop referencing it. The repair is also structurally available: the
+repair loop accepts field declarations, unlike the rule-assignment case discussed under T20. All
+four conditions held, and none of the three repair rounds performed it. \textbf{A check that
+exists, is reachable, fires, and points at an available repair is still four things away from that
+repair being made.}
+
 \paragraph{The reporting shape, unchanged.}
 One row per evaluation template with no average across templates, because carriers may not be
 pooled into a single accuracy; the per-channel denominators of Section~\ref{sec:eval:metrics}
@@ -2073,10 +2147,36 @@ nine concrete target references and five slot-indexed target templates: six of t
 references S4's own output must write, three are X1's, and none is S5's. The prompt additionally
 names both of the X1 cells that a refusal rule requires to be left \emph{blank} --- which by
 construction can never appear in a baseline-to-expected diff and are therefore not in those
-counts --- and states X1's slot count, slot origin, record group size and row-role names, and
-S4's slot count, in prose and in a worked JSON example that is otherwise identical to what all
-four stored X1 specifications wrote. The addresses entered the prompt in the same commit that
-built the X1 dataset, downstream of X1's own pilot derivations.
+counts. The addresses entered the prompt in the same commit that built the X1 dataset,
+downstream of X1's own pilot derivations.
+
+An earlier form of this paragraph also counted the prompt's statement of X1's slot geometry
+--- slot count, slot origin, record group size and row-role names --- as part of the leak.
+Checked against X1's own rule workbook, three of those four are not leakage at all: cell
+\texttt{C28} of its rule sheet states verbatim that the data area holds seven slots at two rows
+per project, and cell \texttt{C6} states that the upper row of each pair carries the month's
+value and the lower the running total. Only the slot \emph{origin} is prompt-only, and even
+that is one step from the workbook's provenance column, which places the form's header on rows
+four and five. The related claim that the prompt's worked example was identical to what all four
+stored X1 specifications wrote is also wrong: two of the four wrote a slot count of three, and
+across all seven stored X1 specifications the leaked count of seven appears in five.
+\textbf{This correction shrinks a disclosed threat, which is the direction this section warns
+about, so it is stated rather than quietly applied.} What it does not touch is the load-bearing
+half. The address counts are unchanged, and they now carry a mechanical control: none of the
+counted references appears in any of the three rule workbooks, the only address-shaped strings
+in X1's being two provenance notes that name header \emph{rows} rather than cells.
+
+The open question --- what the help was \emph{worth} --- has one measured cell, and its value
+is zero. The prompt names X1's two blank signature cells verbatim, and none of the three
+specifications derived for the main results declared them: all three left the blank-target list
+null and recorded the reason, which is that the two cells show no text change in the calibration
+instance and so no verifiable reference for them appears in the evidence the agent was shown.
+That is section~0 of the same prompt being obeyed --- copy a handle verbatim from where you
+found it and never construct one --- so one part of the prompt withheld what another part had
+handed over. Counted the other way, over the specifications' own field maps, S4 reproduced six
+of its six leaked references in all three replicates and X1 one of three in all three; X1's
+figure understates, because the two references it appears to have declined are written anyway
+through a slot template whose origin is the leaked row.
 
 Three things follow, and the third is the one that fixes the bias direction. First, this is the
 same prohibition as the one on rule tables --- no target cell address, bookmark, or content
