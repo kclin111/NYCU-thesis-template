@@ -986,6 +986,45 @@ opens, and this one opened little --- six globs, five shell commands, two patche
 projection in this chapter is therefore a projection over agent behaviour, not over dataset
 size, and the two do not move together.
 
+% 2026-09-07：使用者提的第二個前提（「現在的模型直接寫會不會更快」）。
+% 這一段取代了上一版的「no baseline cost has been measured」——那句話在
+% 19 次 eligibility=formal 的 Arm A 執行之後是假的。量法在
+% benchmark/premise_checks.py，10 支測試、5 列 guard sweep 綠→紅。
+\paragraph{The baseline per-instance cost, now measured, and the crossing it implies.}
+The formal campaign closes the other half. Nineteen Arm~A executions carry
+\texttt{eligibility=formal} and ran on \emph{evaluation} instances, so the objection of the
+previous paragraph does not apply to them: fifteen on the trade-documents dataset, two on each
+of the two spreadsheet datasets. Their per-instance wall-clock means are $188.0$, $136.8$ and
+$178.6$ seconds. One compiled-arm derivation, the fixed cost being amortized, took $1{,}282.7$,
+$456.1$ and $1{,}011.2$ seconds on the same three datasets, each averaged over three
+replicates. The compiled arm's marginal execution, which spends no model tokens by
+construction, took $0.053$ and $0.052$ seconds per instance on the two datasets that produced
+documents at all. Three consequences follow, and the third is the one that matters.
+
+First, at $N=1$ the per-instance agent is faster, by factors of $6.8$, $3.3$ and $5.7$; the
+slowest recorded baseline execution is quicker than the fastest recorded derivation on every
+dataset. Nothing in this thesis claims otherwise, but the figure had not previously been
+written down. Second, the resource crossing $N^{*}$ --- one derivation divided by the
+per-instance saving --- falls at seven and four instances by wall-clock, and between two and six
+by token channel; the third dataset produced no completed compiled execution, so its marginal
+cost is unmeasured and its wall-clock crossing is reported as undefined rather than estimated.
+One composition detail belongs with those numbers rather than in a footnote: the
+trade-documents mean includes four designed refusal cases, on which the baseline correctly
+produced nothing in fifty to seventy seconds. Including them lowers the baseline's per-instance
+cost and therefore \emph{raises} the crossing, which is the direction unfavourable to this
+method; over the eleven producing cases alone the mean is $233.5$ seconds and the crossing is
+six rather than seven. Both are reported.
+
+Third, and this is the reason the number above is called a crossing and not a break-even: none
+of the nine recorded derivations is publishable; every one is refused by the publication gate.
+A crossing computed from them prices a specification that this system declines to deploy, which
+is arithmetic about a deployment that would not happen.
+The quantity that is still missing is therefore named precisely, and it is $k$ of condition
+C-ii in Section~\ref{sec:eval:randomness}: the number of derivation attempts per publishable
+specification, which multiplies the fixed cost. What changed is where the uncertainty sits. It
+is no longer spread across an unmeasured baseline and an unmeasured attempt count; the baseline
+is measured and small, and the whole of the remaining uncertainty is concentrated in $k$.
+
 \subsection{Rule Coverage Is an Arm C Diagnostic}
 \label{sec:eval:coverage}
 
@@ -1006,9 +1045,11 @@ The eight channels, their fail-closed classification, the two case-level rates a
 classification are implemented by the shared scoring module under a frozen policy version,
 with negative controls per channel. The identity instrument is backed by the
 measurement in Table~\ref{tab:eval:identity}, taken on the two real evaluation templates. The
-cost metrics are a plan: the ruling on units is made here, the harness records the fields, and
-no baseline cost has been measured. The bias direction of that gap favours the proposed method,
-since an unmeasured baseline cost is the one quantity that could move $N^{*}$ against it.
+cost metrics are half a plan: the ruling on units is made here, the harness records the fields,
+and the baseline per-instance cost, once the largest empty denominator in this chapter, is now
+measured on nineteen formal executions. What remains normative is the attempt count $k$, and
+the bias direction of leaving it unmeasured favours the proposed method, since it is now the
+only quantity that could move $N^{*}$ against it.
 
 \subsection{Asymmetric Rerun Budget}
 \label{sec:eval:reruns}
@@ -1944,6 +1985,43 @@ under the runtime-parameter gate, and harder to see, because it looks like a con
 rather than a carve-out. Both are now closed, and neither has yet been exercised by a real
 derivation, so this thesis claims nothing about whether they suffice.
 
+% 2026-09-07：使用者提的第一個前提（「失敗會不會其實出在 spec → compile 那一段」）。
+% 這一段是唯讀量測，量法在 benchmark/premise_checks.py：十支測試、五列 guard sweep
+% 綠→紅，其中一列專門守著「compile 段的拒絕要連推導期判決一起看」那個區別。
+\paragraph{Where the compiled arm's failures actually sit, measured rather than assumed.}
+A reader of the three subsections above may reasonably suspect that the bottleneck is the
+deterministic compiler rather than the derivation, since half the pipeline is rule-based
+compilation. The suspicion is checkable and was checked. All four hundred and fifty recorded
+compiled-arm executions were attributed to the stage that returned them, using the three call
+sites of the execution adapter --- resolve the source data, compile, write the document ---
+rather than the wording of the error: one hundred and eighty-seven stopped \emph{before} the
+compiler, one hundred and sixty-nine at compilation, none at the write, and ninety-four
+completed. No execution was left unclassified.
+
+Three further measurements separate ``the failure surfaced at compilation'' from ``the compiler
+is where the defect is''. First, not one of the one hundred and sixty-nine compile-stage
+refusals came from a specification that had passed its own derivation-time validation; every
+one refused a specification the publication gate had already judged invalid and which was
+executed anyway under the ruling of Section~\ref{sec:eval:results}. The four specifications that
+did pass that validation produced fifty completed executions and one hundred and fifty failures
+\emph{upstream} of the compiler. Second, in all ninety-four completed executions the write plan
+the compiler persisted is exactly the write-address set the frozen intermediate representation
+declares --- ninety-four of ninety-four, with no mismatch. Third, and decisively, of the semantic
+checks that land on an address the representation declared, four thousand one hundred and eight
+were scored and none failed; every one of the two thousand and eighty-one semantic failures
+falls on an address the representation never declared. On the trade-documents batch the count of
+checks inside the representation is numerically the batch's reported semantic score, which is
+another way of saying that the score measures what the specification declared and nothing else.
+
+The conclusion is narrow on purpose. It says that repairing the compiler would move none of the
+numbers in this section, and that the residual defects are omissions from the intermediate
+representation rather than mis-execution of it. It does not say that the representation is the
+right intermediate form --- a compiler faithful to a specification that declares too little is
+exactly what produces a silent failure --- and it does not extend backwards over the write path,
+which has carried a defect of its own within this project's history: a guard intended for
+single-cell rules once made a correct extent form unreachable through the repeat construct, and
+no test turned red. What it does establish is the direction of the remaining work.
+
 \paragraph{The reporting shape, unchanged.}
 One row per evaluation template with no average across templates, because carriers may not be
 pooled into a single accuracy; the per-channel denominators of Section~\ref{sec:eval:metrics}
@@ -2043,12 +2121,17 @@ or unmeasured.
     not the number of instances in existence but the number executed \emph{per specification
     lifetime}, which template drift shortens: a form revised every quarter resets the
     amortization every quarter, which is why Section~\ref{sec:eval:drift} is a cost question as
-    much as a correctness one. This quantity is \emph{partly measured}, and the part that is missing
-    is specific. Arm B now has a per-instance execution cost, taken from a live harness run.
-    Arm A does not, and cannot until a scored run: the only instances a dry run may touch are
-    ones whose expected output Arm A is entitled to see, and it used it
-    (Section~\ref{sec:eval:cost}). The break-even point is therefore still not large or small,
-    but its denominator is now half-populated rather than empty.
+    much as a correctness one. This quantity is \emph{measured, conditionally}, and the condition
+    is the whole of what is left. Arm B has a per-instance execution cost from a live harness
+    run; Arm A now has one too, from nineteen scored executions on evaluation instances, which
+    is the run the previous version of this paragraph said would be required --- a dry run could
+    not have produced it, because the only instances it may touch are ones whose expected output
+    Arm A is entitled to see, and it used it (Section~\ref{sec:eval:cost}). The resource
+    crossing that follows is small: seven and four instances by wall-clock on the two datasets
+    whose compiled arm produced documents, and two to six by token channel. That number is not
+    the break-even point, because it prices a derivation the publication gate refuses; the gap
+    between the two is condition C-ii below, and it is no longer one gap among several but the
+    only one.
     % 2026-08-26（W5）：這一條是經濟條件，不是可行性條件。加這半句是因為
     % §1.2 的第二個動機在 N 小的時候仍然成立，而不加就會被讀成互相打架。
     One scope note belongs here rather than in the introduction, because this is where the
@@ -2083,10 +2166,13 @@ or unmeasured.
 \end{description}
 
 \paragraph{What the conditions imply for how the results must be read.}
-Two of the three are unmeasured, and both are unmeasured in the direction that would decide the
-economic argument. This has a direct consequence for Section~\ref{sec:eval:results}: a
-break-even curve drawn from a derivation cost without a baseline cost, or from a single
-successful derivation without an attempt count, would be a picture of an assumption. Chapter
+One of the three is now measured on one side and unmeasured on the other, and the unmeasured
+side is the one that would decide the economic argument. This has a direct consequence for
+Section~\ref{sec:eval:results}: a break-even curve drawn from a single successful derivation
+without an attempt count would still be a picture of an assumption, even now that the baseline
+cost underneath it is real. The half that is measured makes the remaining half sharper rather
+than smaller --- the crossing is at a handful of instances, so the whole economic question is
+now whether a publishable specification costs a handful of derivations or many. Chapter
 \ref{ch:conclusion} takes up what would have to be measured to close each of the three, and this
 subsection deliberately stops at naming them.
 
@@ -2096,10 +2182,12 @@ The zero-model execution property is pinned by the negative-control test named i
 Section~\ref{sec:design:compile-once}; the gate refusals, the repair frequency of 9 of 15, the
 lost paid attempt, and the three silent failures in an executed specification are all recorded
 measurements from this repository, none of them produced by the evaluation harness. The
-break-even instance count and the derivation attempt count are unmeasured, and are labelled here
-rather than estimated. The bias direction of leaving them unmeasured runs \emph{towards the
-proposed method}, because the two quantities that are missing are precisely the two that could
-make the exchange a bad one, and Section~\ref{sec:eval:threats} repeats that disclosure.
+resource crossing is now measured and reported above; the derivation attempt count is not, and
+is labelled here rather than estimated, so the break-even instance count remains unavailable
+because it is the product of the two. The bias direction of leaving the attempt count
+unmeasured runs \emph{towards the proposed method}, because it is the one quantity remaining
+that could make the exchange a bad one, and Section~\ref{sec:eval:threats} repeats that
+disclosure.
 
 \section{Case Study: Engineering Drawings}
 \label{sec:eval:dwg}
@@ -2356,6 +2444,38 @@ two --- the engineering family in this study is an audit report, in which chaina
 appear at all. The primitive was built anyway, because the alternative was to leave a measured
 silent failure in the one carrier that exhibits it; but it rests on a single rule in a single
 dataset and this paragraph is the record of that.
+
+% 2026-09-07：第 21 筆。它放在「偏向本方法」這一節，理由是報法而不是量測——
+% 一個小的交叉點被單獨引用時，讀起來就是 break-even，而它不是。
+\paragraph{T21 --- the resource crossing is small, and quoting it alone would be quoting a
+break-even that does not exist.}
+Section~\ref{sec:eval:cost} reports a crossing of seven and four instances by wall-clock, and
+two to six by token channel. Those figures are favourable, they are easy to quote, and quoted
+by themselves they are misleading in a specific way: they divide one derivation by one baseline
+execution, and the derivation in the numerator is one that this system's own publication gate
+refuses. None of the nine recorded derivations is publishable. The crossing therefore answers
+``how many instances until a derivation pays for itself, \emph{if} a derivation of this cost
+were deployable'', and the conditional is doing the work.
+
+The bias direction is unambiguous, and it has two components rather than one. The obvious one
+is the missing multiplier $k$ of condition C-ii: if it takes several attempts to reach a
+publishable specification, the numerator is several derivations and not one. The less obvious
+one is that the crossing omits the human review that Section~\ref{sec:der:evidence} makes part
+of compiling once --- the recorded audit of this project's three datasets took an hour of a
+person's time across forty-two rows, and not one second of it appears in the arithmetic above.
+Both omissions push the same way. The rule this thesis adopts is therefore that the crossing
+may be reported only with the count of publishable derivations beside it, in the same way that
+Section~\ref{sec:eval:results} reports a refusal channel only beside the number of documents
+the arm produced; a ratio whose numerator the system refuses to ship is a measurement of an
+arrangement nobody would deploy.
+
+One thing this paragraph does \emph{not} concede. The crossing being conditional bears on the
+first of the two motivations only. The confidentiality argument of
+Section~\ref{sec:intro:confidentiality} does not depend on $N$ at all: where instance data may
+not leave the organization, the per-instance alternative is not an option at any instance
+count, and a crossing of four or of four thousand would not change that. Reading a cost result
+as a verdict on the whole method would conflate the two, and T16 is where the second one is
+recorded.
 
 \subsection{Threats Biased Against the Proposed Method}
 \label{sec:eval:threats:unfavourable}
